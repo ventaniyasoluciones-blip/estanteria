@@ -27,7 +27,7 @@
         }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 25px;
             max-width: 1300px;
             margin: 0 auto;
@@ -60,7 +60,7 @@
             background: #000;
             border: 1px dashed #1e293b;
             border-radius: 4px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -74,49 +74,61 @@
         }
         .live-casio-overlay {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
             background: rgba(5, 8, 20, 0.9);
             border: 1px solid #00f3ff;
-            padding: 6px;
+            padding: 5px;
             border-radius: 4px;
             text-align: center;
         }
         .casio-time {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 900;
             color: #00f3ff;
-            text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
-            letter-spacing: 1px;
+            text-shadow: 0 0 8px #00f3ff;
         }
         .casio-date {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: #8be9fd;
-            margin-top: 2px;
-            letter-spacing: 0.5px;
+        }
+        .info-panel-preview {
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px solid #00f3ff;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            text-align: left;
+            font-size: 0.8rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
         }
         .btn {
-            display: inline-block;
+            flex: 1;
             background: linear-gradient(90deg, #00f3ff, #0077ff);
             color: #000;
-            padding: 12px 20px;
+            padding: 10px 10px;
             text-decoration: none;
             font-weight: bold;
             border-radius: 4px;
             font-family: 'Orbitron', sans-serif;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             cursor: pointer;
             border: none;
-            margin-top: 5px;
-            width: 100%;
             box-sizing: border-box;
         }
+        .btn-secundario {
+            background: #ff007f;
+            color: #fff;
+        }
         .btn:hover {
-            background: #fff;
-            box-shadow: 0 0 15px #fff;
+            opacity: 0.85;
+            box-shadow: 0 0 10px #00f3ff;
         }
         .editor-section {
             max-width: 1300px;
@@ -164,33 +176,43 @@
 
     <header>
         <h1>VENTANIYA SOLUCIONES - ESTANTE DE AVISOS</h1>
-        <p>Sistema de Vidriera Dinámica y Estampado en Vivo</p>
+        <p>Sistema de Gestión y Sobreescritura en Vidriera</p>
     </header>
 
-    <!-- PANEL DE DESCARGA / PROCESAMIENTO -->
+    <!-- PANEL DE EDICIÓN GLOBAL -->
     <div class="editor-section">
-        <h2>🛠️ Panel de Control y Descarga Certificada</h2>
+        <h2>🛠️ Panel de Edición de Datos Fijos</h2>
         <div class="editor-box">
             <div class="form-group">
-                <label for="selectImagen">1. Seleccioná la estampa del repositorio:</label>
+                <label for="selectImagen">1. Seleccioná la imagen del repositorio:</label>
                 <select id="selectImagen">
-                    <option value="">Cargando catálogo del repo...</option>
+                    <option value="">Cargando catálogo...</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="textoAviso">2. Escribí el texto del aviso a superponer:</label>
-                <textarea id="textoAviso" rows="3" placeholder="Ej: ¡ESPACIO PUBLICITARIO ACTIVO!"></textarea>
+                <label for="inputTexto">2. Texto principal del aviso:</label>
+                <textarea id="inputTexto" rows="2" placeholder="Ej: ¡OFERTA ESPECIAL EN ESTANTE!"></textarea>
             </div>
-            <button class="btn" id="btnDescargarSellado">📥 Descargar Imagen con Sello y Línea de Tiempo</button>
+            <div class="form-group">
+                <label for="inputDireccion">3. Dirección:</label>
+                <input type="text" id="inputDireccion" placeholder="Ej: Av. Principal 1234, Local 5">
+            </div>
+            <div class="form-group">
+                <label for="inputTelefono">4. Teléfono / Contacto:</label>
+                <input type="text" id="inputTelefono" placeholder="Ej: +54 9 11 1234-5678">
+            </div>
+            <div class="form-group">
+                <label for="inputLogo">5. Logo del avisador (Opcional):</label>
+                <input type="file" id="inputLogo" accept="image/*">
+            </div>
+            <button class="btn" id="btnGuardarFijo" style="width: 100%; padding: 12px; font-size: 0.85rem;">💾 Fijar / Actualizar Datos en esta Imagen</button>
         </div>
     </div>
 
     <!-- VIDRIERA PÚBLICA -->
     <div class="editor-section" style="border-top: none;">
-        <h2>🛒 Vidriera Pública (Catálogo del Repositorio)</h2>
-        <div class="grid" id="estanteGrid">
-            <div class="card"><div style="color: #8be9fd; padding: 20px;">Escaneando repositorio...</div></div>
-        </div>
+        <h2>🛒 Vidriera Dinámica del Repositorio</h2>
+        <div class="grid" id="estanteGrid"></div>
     </div>
 
     <canvas id="canvasProcesamiento"></canvas>
@@ -214,7 +236,6 @@
                         .filter(item => {
                             if (item.type !== 'blob') return false;
                             const ext = item.path.split('.').pop().toLowerCase();
-                            // Excluir archivos de código o carpetas internas si las hubiera
                             return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
                         })
                         .map(item => ({
@@ -223,17 +244,17 @@
                         }));
                 }
             } catch (e) {
-                console.error("Error al leer el repo", e);
+                console.error("Error al leer repo", e);
             }
 
             const select = document.getElementById('selectImagen');
             select.innerHTML = '';
             if (imagenesRepo.length === 0) {
-                select.innerHTML = '<option value="">No se encontraron imágenes en el repo</option>';
+                select.innerHTML = '<option value="">No hay imágenes</option>';
             } else {
                 imagenesRepo.forEach((img) => {
                     const opt = document.createElement('option');
-                    opt.value = img.download_url;
+                    opt.value = img.name;
                     opt.textContent = img.name;
                     select.appendChild(opt);
                 });
@@ -262,19 +283,102 @@
             }, 40);
         }
 
-        // MOTOR DE DESCARGA CON SELLO Y LÍNEA DE TIEMPO
-        document.getElementById('btnDescargarSellado').addEventListener('click', () => {
-            const select = document.getElementById('selectImagen');
-            const textoAviso = document.getElementById('textoAviso').value;
+        // GUARDAR / FIJAR DATOS EN LOCALSTORAGE ASOCIADOS A CADA IMAGEN
+        document.getElementById('btnGuardarFijo').addEventListener('click', () => {
+            const nombreImg = document.getElementById('selectImagen').value;
+            const texto = document.getElementById('inputTexto').value;
+            const direccion = document.getElementById('inputDireccion').value;
+            const telefono = document.getElementById('inputTelefono').value;
+            const inputLogo = document.getElementById('inputLogo');
 
-            if (!select.value) {
-                alert("Seleccioná una imagen del catálogo.");
+            if (!nombreImg) {
+                alert("Seleccioná una imagen del repositorio.");
                 return;
             }
 
+            let datosFijos = JSON.parse(localStorage.getItem('ventaniya_datos_fijos')) || {};
+
+            const guardarRegistro = (logoBase64 = null) => {
+                datosFijos[nombreImg] = {
+                    texto: texto,
+                    direccion: direccion,
+                    telefono: telefono,
+                    logo: logoBase64 || (datosFijos[nombreImg] ? datosFijos[nombreImg].logo : null)
+                };
+                localStorage.setItem('ventaniya_datos_fijos', JSON.stringify(datosFijos));
+                alert("¡Datos fijados con éxito en la imagen!");
+                renderizarVidriera();
+            };
+
+            if (inputLogo.files && inputLogo.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    guardarRegistro(e.target.result);
+                };
+                reader.readAsDataURL(inputLogo.files[0]);
+            } else {
+                guardarRegistro();
+            }
+        });
+
+        function renderizarVidriera() {
+            const grid = document.getElementById('estanteGrid');
+            grid.innerHTML = '';
+
+            let datosFijos = JSON.parse(localStorage.getItem('ventaniya_datos_fijos')) || {};
+
+            if (imagenesRepo.length === 0) {
+                grid.innerHTML = '<div class="card"><div style="color: #ff007f;">No se encontraron imágenes en el repositorio.</div></div>';
+                return;
+            }
+
+            imagenesRepo.forEach((img, index) => {
+                const idReloj = `repo-rel-${index}`;
+                const config = datosFijos[img.name] || { texto: '', direccion: '', telefono: '', logo: null };
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div><span class="badge-repo">🖼️ ${img.name}</span></div>
+                    
+                    <div class="img-container">
+                        <img src="${img.download_url}" alt="${img.name}" id="img-base-${index}">
+                        <div class="live-casio-overlay">
+                            <div class="casio-time" id="${idReloj}-time">00:00:00.000</div>
+                            <div class="casio-date" id="${idReloj}-date">--/--/----</div>
+                        </div>
+                    </div>
+
+                    <div class="info-panel-preview">
+                        <div><b>💬 Aviso:</b> ${config.texto || '<i>Sin aviso configurado</i>'}</div>
+                        <div><b>📍 Dir:</b> ${config.direccion || '-'}</div>
+                        <div><b>📞 Tel:</b> ${config.telefono || '-'}</div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn" onclick="cargarEnEditor('${img.name}')">✏️ Editar</button>
+                        <button class="btn btn-secundario" onclick="descargarEstampaCompleta('${img.download_url}', '${config.texto}', '${config.direccion}', '${config.telefono}', '${config.logo || ''}')">📥 Descargar</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+                iniciarReloj(idReloj);
+            });
+        }
+
+        window.cargarEnEditor = function(nombreImg) {
+            document.getElementById('selectImagen').value = nombreImg;
+            let datosFijos = JSON.parse(localStorage.getItem('ventaniya_datos_fijos')) || {};
+            const config = datosFijos[nombreImg] || { texto: '', direccion: '', telefono: '' };
+            document.getElementById('inputTexto').value = config.texto;
+            document.getElementById('inputDireccion').value = config.direccion;
+            document.getElementById('inputTelefono').value = config.telefono;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        window.descargarEstampaCompleta = function(urlImg, texto, direccion, telefono, logoBase64) {
             const imgBase = new Image();
             imgBase.crossOrigin = "anonymous";
-            imgBase.src = select.value + "?t=" + Date.now();
+            imgBase.src = urlImg + "?t=" + Date.now();
 
             imgBase.onload = () => {
                 const canvas = document.getElementById('canvasProcesamiento');
@@ -308,7 +412,7 @@
                 ctx.fillStyle = "#00f3ff";
                 ctx.fillText(`🔒 ID HASH: ${hashRespaldo}`, 35, canvas.height - 40);
 
-                // Sello circular atómico
+                // Sello circular
                 const cx = canvas.width - 130, cy = canvas.height - 95;
                 ctx.beginPath();
                 ctx.arc(cx, cy, 75, 0, Math.PI * 2);
@@ -326,72 +430,45 @@
                 ctx.fillStyle = "#fff";
                 ctx.fillText("SOLUCIONES", cx, cy - 2);
 
-                // Texto superior del aviso (si se escribió algo)
-                if (textoAviso.trim() !== "") {
+                // Bloque superior de aviso, dirección y teléfono
+                if (texto || direccion || telefono) {
                     ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
-                    ctx.fillRect(40, 50, canvas.width - 80, 140);
+                    ctx.fillRect(40, 40, canvas.width - 80, 200);
                     ctx.strokeStyle = "#00f3ff";
                     ctx.lineWidth = 3;
-                    ctx.strokeRect(40, 50, canvas.width - 80, 140);
+                    ctx.strokeRect(40, 40, canvas.width - 80, 200);
 
                     ctx.fillStyle = "#fff";
-                    ctx.font = "bold 36px 'Share Tech Mono', monospace";
-                    wrapText(ctx, textoAviso, canvas.width / 2, 95, canvas.width - 120, 42);
+                    ctx.font = "bold 30px 'Share Tech Mono', monospace";
+                    ctx.textAlign = "left";
+                    ctx.fillText(texto || "", 60, 90);
+
+                    ctx.font = "22px 'Share Tech Mono', monospace";
+                    ctx.fillStyle = "#8be9fd";
+                    if (direccion) ctx.fillText(`📍 ${direccion}`, 60, 145);
+                    if (telefono) ctx.fillText(`📞 ${telefono}`, 60, 185);
                 }
 
-                // Descargar archivo combinado automáticamente
-                const link = document.createElement('a');
-                link.download = `aviso-sellado-${Date.now()}.png`;
-                link.href = canvas.toDataURL("image/png");
-                link.click();
-            };
-        });
-
-        function wrapText(context, text, x, y, maxWidth, lineHeight) {
-            const words = text.split(' ');
-            let line = '';
-            for(let n = 0; n < words.length; n++) {
-                let testLine = line + words[n] + ' ';
-                if (context.measureText(testLine).width > maxWidth && n > 0) {
-                    context.fillText(line, x, y);
-                    line = words[n] + ' ';
-                    y += lineHeight;
+                // Logo si existe
+                if (logoBase64 && logoBase64 !== "null") {
+                    const imgLogo = new Image();
+                    imgLogo.src = logoBase64;
+                    imgLogo.onload = () => {
+                        ctx.drawImage(imgLogo, canvas.width - 200, 60, 120, 120);
+                        dispararDescarga(canvas);
+                    };
+                    imgLogo.onerror = () => dispararDescarga(canvas);
                 } else {
-                    line = testLine;
+                    dispararDescarga(canvas);
                 }
-            }
-            context.fillText(line, x, y);
+            };
         }
 
-        function renderizarVidriera() {
-            const grid = document.getElementById('estanteGrid');
-            grid.innerHTML = ''; 
-
-            if (imagenesRepo.length === 0) {
-                grid.innerHTML = '<div class="card"><div style="color: #ff007f;">No se encontraron imágenes en el repositorio. Subí imágenes a tu repo para verlas acá.</div></div>';
-                return;
-            }
-
-            imagenesRepo.forEach((img, index) => {
-                const idReloj = `repo-rel-${index}`;
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div><span class="badge-repo">🖼️ ESTAMPA REPO</span></div>
-                    <div class="img-container">
-                        <img src="${img.download_url}" alt="${img.name}">
-                        <div class="live-casio-overlay">
-                            <div class="casio-time" id="${idReloj}-time">00:00:00.000</div>
-                            <div class="casio-date" id="${idReloj}-date">--/--/----</div>
-                        </div>
-                    </div>
-                    <div>
-                        <a href="${img.download_url}" download="${img.name}" class="btn" target="_blank">📥 Descargar Original</a>
-                    </div>
-                `;
-                grid.appendChild(card);
-                iniciarReloj(idReloj);
-            });
+        function dispararDescarga(canvas) {
+            const link = document.createElement('a');
+            link.download = `estampa-certificada-${Date.now()}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
         }
 
         inicializar();

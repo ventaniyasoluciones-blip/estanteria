@@ -283,7 +283,7 @@
             }, 40);
         }
 
-        // GUARDAR / FIJAR DATOS EN LOCALSTORAGE ASOCIADOS A CADA IMAGEN
+        // GUARDAR / FIJAR DATOS EN LOCALSTORAGE
         document.getElementById('btnGuardarFijo').addEventListener('click', () => {
             const nombreImg = document.getElementById('selectImagen').value;
             const texto = document.getElementById('inputTexto').value;
@@ -342,7 +342,7 @@
                     <div><span class="badge-repo">🖼️ ${img.name}</span></div>
                     
                     <div class="img-container">
-                        <img src="${img.download_url}" alt="${img.name}" id="img-base-${index}">
+                        <img src="${img.download_url}" alt="${img.name}">
                         <div class="live-casio-overlay">
                             <div class="casio-time" id="${idReloj}-time">00:00:00.000</div>
                             <div class="casio-date" id="${idReloj}-date">--/--/----</div>
@@ -357,7 +357,7 @@
 
                     <div class="btn-group">
                         <button class="btn" onclick="cargarEnEditor('${img.name}')">✏️ Editar</button>
-                        <button class="btn btn-secundario" onclick="descargarEstampaCompleta('${img.download_url}', '${config.texto}', '${config.direccion}', '${config.telefono}', '${config.logo || ''}')">📥 Descargar</button>
+                        <button class="btn btn-secundario" onclick="descargarEstampaCompleta('${img.name}')">📥 Descargar</button>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -375,10 +375,19 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        window.descargarEstampaCompleta = function(urlImg, texto, direccion, telefono, logoBase64) {
+        window.descargarEstampaCompleta = function(nombreImg) {
+            let datosFijos = JSON.parse(localStorage.getItem('ventaniya_datos_fijos')) || {};
+            const config = datosFijos[nombreImg] || { texto: '', direccion: '', telefono: '', logo: null };
+            const imgObj = imagenesRepo.find(i => i.name === nombreImg);
+
+            if (!imgObj) {
+                alert("No se encontró la imagen base.");
+                return;
+            }
+
             const imgBase = new Image();
             imgBase.crossOrigin = "anonymous";
-            imgBase.src = urlImg + "?t=" + Date.now();
+            imgBase.src = imgObj.download_url + "?t=" + Date.now();
 
             imgBase.onload = () => {
                 const canvas = document.getElementById('canvasProcesamiento');
@@ -431,7 +440,7 @@
                 ctx.fillText("SOLUCIONES", cx, cy - 2);
 
                 // Bloque superior de aviso, dirección y teléfono
-                if (texto || direccion || telefono) {
+                if (config.texto || config.direccion || config.telefono) {
                     ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
                     ctx.fillRect(40, 40, canvas.width - 80, 200);
                     ctx.strokeStyle = "#00f3ff";
@@ -441,18 +450,18 @@
                     ctx.fillStyle = "#fff";
                     ctx.font = "bold 30px 'Share Tech Mono', monospace";
                     ctx.textAlign = "left";
-                    ctx.fillText(texto || "", 60, 90);
+                    ctx.fillText(config.texto || "", 60, 90);
 
                     ctx.font = "22px 'Share Tech Mono', monospace";
                     ctx.fillStyle = "#8be9fd";
-                    if (direccion) ctx.fillText(`📍 ${direccion}`, 60, 145);
-                    if (telefono) ctx.fillText(`📞 ${telefono}`, 60, 185);
+                    if (config.direccion) ctx.fillText(`📍 ${config.direccion}`, 60, 145);
+                    if (config.telefono) ctx.fillText(`📞 ${config.telefono}`, 60, 185);
                 }
 
                 // Logo si existe
-                if (logoBase64 && logoBase64 !== "null") {
+                if (config.logo) {
                     const imgLogo = new Image();
-                    imgLogo.src = logoBase64;
+                    imgLogo.src = config.logo;
                     imgLogo.onload = () => {
                         ctx.drawImage(imgLogo, canvas.width - 200, 60, 120, 120);
                         dispararDescarga(canvas);

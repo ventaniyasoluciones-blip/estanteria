@@ -185,7 +185,7 @@
         <p>Sistema de Estampado Temporal, Sello Atómico y Vidriera Pública Permanente</p>
     </header>
 
-    <!-- SECCIÓN DE PERSONALIZACIÓN Y ESTAMPADO -->
+    <!-- PANEL DE EDICIÓN Y ESTAMPADO -->
     <div class="editor-section">
         <h2>🛠️ Panel de Edición y Estampado Atómico de Avisos</h2>
         <div class="editor-box">
@@ -203,11 +203,11 @@
                 <label for="logoAvisador">3. Subir logo del avisador (Opcional):</label>
                 <input type="file" id="logoAvisador" accept="image/*">
             </div>
-            <button class="btn" id="btnGenerarAviso">⚡ Generar y Sumar a la Vidriera Pública</button>
+            <button class="btn" id="btnGenerarAviso">⚡ Generar, Sellar y Sumar a la Vidriera</button>
         </div>
     </div>
 
-    <!-- VIDRIERA PÚBLICA TOTAL -->
+    <!-- VIDRIERA PÚBLICA -->
     <div class="editor-section" style="border-top: none;">
         <h2>🛒 Vidriera Pública de Estampillas y Avisos Fijos (Permanentes al F5)</h2>
         <div class="grid" id="estanteGrid">
@@ -224,20 +224,18 @@
 
         let listaImagenesRepo = [];
 
-        // Función principal de arranque blindada
         async function inicializarVidriera() {
             await cargarImagenesGitHub();
             renderizarVidrieraCompleta();
         }
 
-        // Cargar imágenes del repositorio con manejo de errores seguro
         async function cargarImagenesGitHub() {
             const select = document.getElementById('selectImagen');
             const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/${carpetaRepo}`;
 
             try {
                 const response = await fetch(urlApi);
-                if (!response.ok) throw new Error("Error en la respuesta de GitHub");
+                if (!response.ok) throw new Error("Error en GitHub");
                 
                 const archivos = await response.json();
                 listaImagenesRepo = archivos.filter(file => {
@@ -246,7 +244,6 @@
                 });
 
                 select.innerHTML = '';
-
                 if (listaImagenesRepo.length === 0) {
                     select.innerHTML = '<option value="">No hay imágenes en el repositorio</option>';
                     return;
@@ -258,14 +255,12 @@
                     option.textContent = img.name;
                     select.appendChild(option);
                 });
-
             } catch (error) {
-                console.warn("No se pudo conectar con GitHub, usando solo almacenamiento local:", error);
-                select.innerHTML = '<option value="">No se pudieron cargar imágenes del repositorio</option>';
+                console.warn("Modo local activo:", error);
+                select.innerHTML = '<option value="">No se pudieron cargar imágenes del repo</option>';
             }
         }
 
-        // Reloj Casio en vivo con milisegundos fluidos
         function iniciarRelojCasioEnVivo(idPrefix) {
             setInterval(() => {
                 const ahora = new Date();
@@ -288,7 +283,7 @@
             }, 40);
         }
 
-        // Generar estampa, guardar y actualizar interfaz de inmediato
+        // MOTOR DE ESTAMPADO Y SELLADO ATÓMICO
         document.getElementById('btnGenerarAviso').addEventListener('click', () => {
             const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
@@ -305,7 +300,12 @@
 
             const imgBase = new Image();
             imgBase.crossOrigin = "anonymous";
-            imgBase.src = imgUrl;
+            // Forzar bypass de caché para evitar bloqueos del navegador
+            imgBase.src = imgUrl + (imgUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+            imgBase.onerror = () => {
+                alert("Error: No se pudo cargar la imagen seleccionada para estampar. Verificá tu conexión.");
+            };
 
             imgBase.onload = () => {
                 canvas.width = 1080;
@@ -326,9 +326,9 @@
 
                 const hashRespaldo = "HASH-ATOMIC-" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + ahora.getTime().toString(36).toUpperCase();
 
-                // Franja inferior técnica
+                // 1. FRANJA INFERIOR TÉCNICA (Reloj Casio + Fecha + Hash)
                 const panelAlto = 190;
-                ctx.fillStyle = "rgba(5, 8, 20, 0.92)";
+                ctx.fillStyle = "rgba(5, 8, 20, 0.95)";
                 ctx.fillRect(0, canvas.height - panelAlto, canvas.width, panelAlto);
 
                 ctx.strokeStyle = "#00f3ff";
@@ -352,7 +352,7 @@
                 ctx.fillStyle = "#00f3ff";
                 ctx.fillText(`🔒 ID HASH RESPALDO: ${hashRespaldo}`, 35, canvas.height - 40);
 
-                // Sello postal atómico
+                // 2. SELLO POSTAL ATÓMICO CIRCULAR (Lado derecho inferior)
                 const centroX = canvas.width - 130;
                 const centroY = canvas.height - 95;
                 const radioSello = 75;
@@ -360,7 +360,7 @@
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(centroX, centroY, radioSello, 0, Math.PI * 2);
-                ctx.fillStyle = "rgba(5, 8, 20, 0.85)";
+                ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
                 ctx.fill();
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = "#00f3ff";
@@ -386,12 +386,12 @@
                 ctx.fillText("★ CERTIFICADO ★", centroX, centroY + 22);
                 ctx.restore();
 
-                // Aviso superior
+                // 3. AVISO SUPERIOR
                 if (textoAviso.trim() !== "") {
                     const boxAvisoY = 50;
                     const boxAvisoAlto = 140;
 
-                    ctx.fillStyle = "rgba(5, 8, 20, 0.88)";
+                    ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
                     ctx.fillRect(40, boxAvisoY, canvas.width - 80, boxAvisoAlto);
                     
                     ctx.strokeStyle = "#00f3ff";
@@ -408,6 +408,12 @@
                     ctx.shadowBlur = 0;
                 }
 
+                // 4. LOGO Y PROCESAMIENTO FINAL CON SELLADO GARANTIZADO
+                const procesarFinalizacion = () => {
+                    const dataUrlFinal = canvas.toDataURL("image/png");
+                    guardarYRenderizarAviso(dataUrlFinal, textoAviso || "Aviso Certificado");
+                };
+
                 if (inputLogo.files && inputLogo.files[0]) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -416,18 +422,21 @@
                         imgLogo.onload = () => {
                             const logoSize = 130;
                             ctx.drawImage(imgLogo, 60, 210, logoSize, logoSize);
-                            guardarYRenderizarAviso(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
-                        }
-                    }
+                            procesarFinalizacion();
+                        };
+                        imgLogo.onerror = () => {
+                            procesarFinalizacion(); // Si falla el logo, igual sella la imagen principal
+                        };
+                    };
                     reader.readAsDataURL(inputLogo.files[0]);
                 } else {
-                    guardarYRenderizarAviso(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
+                    procesarFinalizacion();
                 }
             };
         });
 
         function wrapText(context, text, x, y, maxWidth, lineHeight) {
-            const words = text.split(' ');
+            const words = text.path ? [] : text.split(' ');
             let line = '';
             let currentY = y;
 
@@ -459,44 +468,42 @@
             avisosGuardados.unshift(nuevoAviso);
             localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
 
-            // Limpiar campo de texto para el próximo aviso
             document.getElementById('textoAviso').value = '';
             document.getElementById('logoAvisador').value = '';
 
-            alert("¡Aviso fijado con éxito! Ya se sumó a la vidriera pública.");
+            alert("¡Aviso procesado, sellado con éxito y sumado a la vidriera!");
             renderizarVidrieraCompleta();
         }
 
-        // Renderizador unificado infalible
         function renderizarVidrieraCompleta() {
             const grid = document.getElementById('estanteGrid');
             grid.innerHTML = ''; 
 
             let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
-            // 1. Mostrar avisos guardados (fijos permanentes)
+            // 1. Mostrar avisos fijos sellados y acumulados
             avisosGuardados.forEach((aviso) => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     <div>
-                        <span class="badge-aviso">⚡ AVISO CERTIFICADO FIJO</span>
+                        <span class="badge-aviso">⚡ AVISO SELLADO FIJO</span>
                     </div>
                     <div class="img-container">
-                        <img src="${aviso.imagen}" alt="Aviso Personalizado">
+                        <img src="${aviso.imagen}" alt="Aviso Sellado">
                     </div>
                     <div style="font-size: 0.8rem; color: #fff; text-align: left; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         💬 ${aviso.texto}
                     </div>
                     <div>
-                        <a href="${aviso.imagen}" download="aviso-ventaniya-${aviso.id}.png" class="btn">📥 Descargar Estampado</a>
+                        <a href="${aviso.imagen}" download="aviso-sellado-ventaniya-${aviso.id}.png" class="btn">📥 Descargar Sellado</a>
                         <button class="btn btn-borrar" onclick="borrarAvisoFijo(${aviso.id})">🗑️ Quitar de la Vidriera</button>
                     </div>
                 `;
                 grid.appendChild(card);
             });
 
-            // 2. Mostrar estampas originales del repositorio
+            // 2. Mostrar estampas originales del repo
             if (listaImagenesRepo.length > 0) {
                 listaImagenesRepo.forEach((img, index) => {
                     const cardId = `reloj-repo-${index}`;
@@ -528,7 +535,7 @@
         }
 
         window.borrarAvisoFijo = function(id) {
-            if (confirm("¿Estás seguro de quitar este aviso fijo de la vidriera?")) {
+            if (confirm("¿Estás seguro de quitar este aviso de la vidriera?")) {
                 let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
                 avisosGuardados = avisosGuardados.filter(a => a.id !== id);
                 localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
@@ -536,7 +543,6 @@
             }
         };
 
-        // Arrancar
         inicializarVidriera();
     </script>
 

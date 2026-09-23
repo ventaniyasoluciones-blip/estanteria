@@ -158,59 +158,38 @@
         canvas {
             display: none;
         }
-        .token-box {
-            background: rgba(255, 0, 127, 0.1);
-            border: 1px dashed #ff007f;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
     </style>
 </head>
 <body>
 
     <header>
         <h1>VENTANIYA SOLUCIONES - ESTANTE DE AVISOS</h1>
-        <p>Sistema de Estampado y Sincronización Directa con Repositorio</p>
+        <p>Sistema de Vidriera Dinámica y Estampado en Vivo</p>
     </header>
 
-    <!-- PANEL DE EDICIÓN Y SINCRONIZACIÓN -->
+    <!-- PANEL DE DESCARGA / PROCESAMIENTO -->
     <div class="editor-section">
-        <h2>🛠️ Panel de Edición y Publicación en el Repositorio</h2>
+        <h2>🛠️ Panel de Control y Descarga Certificada</h2>
         <div class="editor-box">
-            
-            <!-- Configuración del Token (Se guarda en tu navegador) -->
-            <div class="token-box">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label for="githubToken">🔑 GitHub Personal Access Token (Solo la 1ª vez):</label>
-                    <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-                    <small style="color: #8be9fd; font-size: 0.7rem; display: block; margin-top: 5px;">Necesario para que la web guarde el aviso directamente en tu GitHub y se vea en todos lados.</small>
-                </div>
-            </div>
-
             <div class="form-group">
-                <label for="selectImagen">1. Seleccioná la estampa base del repositorio:</label>
+                <label for="selectImagen">1. Seleccioná la estampa del repositorio:</label>
                 <select id="selectImagen">
-                    <option value="">Cargando imágenes...</option>
+                    <option value="">Cargando catálogo del repo...</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="textoAviso">2. Escribí el texto del aviso:</label>
-                <textarea id="textoAviso" rows="4" placeholder="Ej: ¡OFERTA ESPECIAL PUBLICADA EN VIVO!"></textarea>
+                <label for="textoAviso">2. Escribí el texto del aviso a superponer:</label>
+                <textarea id="textoAviso" rows="3" placeholder="Ej: ¡ESPACIO PUBLICITARIO ACTIVO!"></textarea>
             </div>
-            <div class="form-group">
-                <label for="logoAvisador">3. Subir logo del avisador (Opcional):</label>
-                <input type="file" id="logoAvisador" accept="image/*">
-            </div>
-            <button class="btn" id="btnGenerarYSubir">🚀 Generar y Guardar en el Repositorio</button>
+            <button class="btn" id="btnDescargarSellado">📥 Descargar Imagen con Sello y Línea de Tiempo</button>
         </div>
     </div>
 
     <!-- VIDRIERA PÚBLICA -->
     <div class="editor-section" style="border-top: none;">
-        <h2>🛒 Vidriera Pública (Sincronizada con el Repo)</h2>
+        <h2>🛒 Vidriera Pública (Catálogo del Repositorio)</h2>
         <div class="grid" id="estanteGrid">
-            <div class="card"><div style="color: #8be9fd; padding: 20px;">Cargando elementos del repositorio...</div></div>
+            <div class="card"><div style="color: #8be9fd; padding: 20px;">Escaneando repositorio...</div></div>
         </div>
     </div>
 
@@ -220,15 +199,6 @@
         const usuarioRepo = "ventaniyasoluciones-blip";
         const nombreRepo = "estanteria";
         let imagenesRepo = [];
-
-        // Cargar token guardado previamente si existe
-        window.addEventListener('DOMContentLoaded', () => {
-            const tokenGuardado = localStorage.getItem('ventaniya_gh_token');
-            if (tokenGuardado) {
-                document.getElementById('githubToken').value = tokenGuardado;
-            }
-            inicializar();
-        });
 
         async function inicializar() {
             await cargarImagenesRepo();
@@ -244,6 +214,7 @@
                         .filter(item => {
                             if (item.type !== 'blob') return false;
                             const ext = item.path.split('.').pop().toLowerCase();
+                            // Excluir archivos de código o carpetas internas si las hubiera
                             return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
                         })
                         .map(item => ({
@@ -252,14 +223,13 @@
                         }));
                 }
             } catch (e) {
-                console.error("Error al leer repo", e);
+                console.error("Error al leer el repo", e);
             }
 
-            // Actualizar selector de imágenes base
             const select = document.getElementById('selectImagen');
             select.innerHTML = '';
             if (imagenesRepo.length === 0) {
-                select.innerHTML = '<option value="">No se encontraron imágenes</option>';
+                select.innerHTML = '<option value="">No se encontraron imágenes en el repo</option>';
             } else {
                 imagenesRepo.forEach((img) => {
                     const opt = document.createElement('option');
@@ -292,24 +262,15 @@
             }, 40);
         }
 
-        // MOTOR DE ESTAMPADO Y ENVÍO A GITHUB
-        document.getElementById('btnGenerarYSubir').addEventListener('click', () => {
-            const token = document.getElementById('githubToken').value.trim();
+        // MOTOR DE DESCARGA CON SELLO Y LÍNEA DE TIEMPO
+        document.getElementById('btnDescargarSellado').addEventListener('click', () => {
             const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
-            const inputLogo = document.getElementById('logoAvisador');
 
-            if (!token) {
-                alert("Por favor ingresá tu Token de GitHub para poder guardar el archivo en el repositorio.");
-                return;
-            }
             if (!select.value) {
-                alert("Seleccioná una imagen base.");
+                alert("Seleccioná una imagen del catálogo.");
                 return;
             }
-
-            // Guardar token en localStorage para comodidad
-            localStorage.setItem('ventaniya_gh_token', token);
 
             const imgBase = new Image();
             imgBase.crossOrigin = "anonymous";
@@ -327,7 +288,7 @@
                 const dateString = `${String(ahora.getDate()).padStart(2, '0')}/${String(ahora.getMonth() + 1).padStart(2, '0')}/${ahora.getFullYear()}`;
                 const hashRespaldo = "HASH-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-                // Franja inferior
+                // Franja inferior con línea de tiempo y hash
                 ctx.fillStyle = "rgba(5, 8, 20, 0.95)";
                 ctx.fillRect(0, canvas.height - 190, canvas.width, 190);
                 ctx.strokeStyle = "#00f3ff";
@@ -347,7 +308,7 @@
                 ctx.fillStyle = "#00f3ff";
                 ctx.fillText(`🔒 ID HASH: ${hashRespaldo}`, 35, canvas.height - 40);
 
-                // Sello circular
+                // Sello circular atómico
                 const cx = canvas.width - 130, cy = canvas.height - 95;
                 ctx.beginPath();
                 ctx.arc(cx, cy, 75, 0, Math.PI * 2);
@@ -365,7 +326,7 @@
                 ctx.fillStyle = "#fff";
                 ctx.fillText("SOLUCIONES", cx, cy - 2);
 
-                // Texto superior
+                // Texto superior del aviso (si se escribió algo)
                 if (textoAviso.trim() !== "") {
                     ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
                     ctx.fillRect(40, 50, canvas.width - 80, 140);
@@ -378,26 +339,11 @@
                     wrapText(ctx, textoAviso, canvas.width / 2, 95, canvas.width - 120, 42);
                 }
 
-                const finalizar = () => {
-                    const dataUrl = canvas.toDataURL("image/png");
-                    subirAlRepositorioGitHub(dataUrl, token);
-                };
-
-                if (inputLogo.files && inputLogo.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const imgLogo = new Image();
-                        imgLogo.src = e.target.result;
-                        imgLogo.onload = () => {
-                            ctx.drawImage(imgLogo, 60, 210, 130, 130);
-                            finalizar();
-                        };
-                        imgLogo.onerror = finalizar;
-                    };
-                    reader.readAsDataURL(inputLogo.files[0]);
-                } else {
-                    finalizar();
-                }
+                // Descargar archivo combinado automáticamente
+                const link = document.createElement('a');
+                link.download = `aviso-sellado-${Date.now()}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
             };
         });
 
@@ -417,72 +363,21 @@
             context.fillText(line, x, y);
         }
 
-        // FUNCIÓN CLAVE: Sube la imagen generada directo al repositorio mediante la API de GitHub
-        async function subirAlRepositorioGitHub(dataUrl, token) {
-            const nombreArchivo = `aviso-publicado-${Date.now()}.png`;
-            const rutaApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/${nombreArchivo}`;
-            
-            // Extraer solo los datos Base64 de la imagen del canvas
-            const base64Content = dataUrl.split(',')[1];
-
-            const bodyData = {
-                message: `Publicar nuevo aviso sellado: ${nombreArchivo}`,
-                content: base64Content,
-                branch: "main"
-            };
-
-            btnGenerarYSubir.disabled = true;
-            btnGenerarYSubir.textContent = "⏳ Subiendo al repositorio...";
-
-            try {
-                const response = await fetch(rutaApi, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(bodyData)
-                });
-
-                if (response.ok) {
-                    alert("¡Aviso publicado y guardado con éxito en el repositorio!");
-                    document.getElementById('textoAviso').value = '';
-                    document.getElementById('logoAvisador').value = '';
-                    // Recargar repositorio para que aparezca en la vidriera de inmediato
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    const errorJson = await response.json();
-                    alert("Error al subir a GitHub: " + (errorJson.message || 'Token inválido o sin permisos.'));
-                }
-            } catch (err) {
-                alert("Error de red al intentar conectar con GitHub.");
-            } finally {
-                btnGenerarYSubir.disabled = false;
-                btnGenerarYSubir.textContent = "🚀 Generar y Guardar en el Repositorio";
-            }
-        }
-
         function renderizarVidriera() {
             const grid = document.getElementById('estanteGrid');
             grid.innerHTML = ''; 
 
             if (imagenesRepo.length === 0) {
-                grid.innerHTML = '<div class="card"><div style="color: #ff007f;">No se encontraron imágenes en el repositorio.</div></div>';
+                grid.innerHTML = '<div class="card"><div style="color: #ff007f;">No se encontraron imágenes en el repositorio. Subí imágenes a tu repo para verlas acá.</div></div>';
                 return;
             }
 
             imagenesRepo.forEach((img, index) => {
                 const idReloj = `repo-rel-${index}`;
-                const esAvisoPublicado = img.name.startsWith('aviso-publicado');
-                const badgeTexto = esAvisoPublicado ? '⚡ AVISO EN REPO' : '🖼️ ESTAMPA BASE';
-                const badgeColor = esAvisoPublicado ? '#22c55e' : '#ff007f';
-
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
-                    <div><span class="badge-repo" style="background: ${badgeColor};">${badgeTexto}</span></div>
+                    <div><span class="badge-repo">🖼️ ESTAMPA REPO</span></div>
                     <div class="img-container">
                         <img src="${img.download_url}" alt="${img.name}">
                         <div class="live-casio-overlay">
@@ -491,13 +386,15 @@
                         </div>
                     </div>
                     <div>
-                        <a href="${img.download_url}" download="${img.name}" class="btn" target="_blank">📥 Descargar</a>
+                        <a href="${img.download_url}" download="${img.name}" class="btn" target="_blank">📥 Descargar Original</a>
                     </div>
                 `;
                 grid.appendChild(card);
                 iniciarReloj(idReloj);
             });
         }
+
+        inicializar();
     </script>
 </body>
 </html>

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estante de Avisos - VentaniYA Soluciones</title>
-    <!-- Fuentes: Share Tech Mono para código y Orbitron para títulos -->
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <style>
         body {
@@ -192,7 +191,7 @@
             <div class="form-group">
                 <label for="selectImagen">1. Seleccioná una estampa base del repositorio:</label>
                 <select id="selectImagen">
-                    <option value="">Cargando opciones...</option>
+                    <option value="">Buscando imágenes en el repositorio...</option>
                 </select>
             </div>
             <div class="form-group">
@@ -218,30 +217,53 @@
     <canvas id="canvasProcesamiento"></canvas>
 
     <script>
-        // CONFIGURACIÓN DE LAS ESTAMPAS DEL REPOSITORIO
-        // Acá listás exactamente los nombres de los archivos de imagen que subiste a tu repositorio.
-        // Si subís más imágenes, simplemente agregás una línea nueva con su nombre exacto.
         const usuarioRepo = "ventaniyasoluciones-blip";
         const nombreRepo = "estanteria";
+        
+        let listaImagenesRepo = [];
 
-        const listaImagenesRepo = [
-            { name: "estampa1.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa1.png` },
-            { name: "estampa2.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa2.png` }
-            // Podés agregar más estampas así:
-            // { name: "tu-imagen.jpg", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/tu-imagen.jpg` }
-        ];
-
-        function inicializarVidriera() {
-            cargarSelectImagenes();
+        async function inicializarVidriera() {
+            await detectarImagenesAutomaticasGitHub();
             renderizarVidrieraCompleta();
         }
 
-        function cargarSelectImagenes() {
+        // Lectura automática de archivos desde GitHub usando Git Trees (evita bloqueos de contenidos)
+        async function detectarImagenesAutomaticasGitHub() {
+            const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/git/trees/main?recursive=1`;
+
+            try {
+                const response = await fetch(urlApi);
+                if (!response.ok) throw new Error("No se pudo conectar al árbol del repositorio");
+                
+                const data = await response.json();
+                
+                if (data && data.tree) {
+                    listaImagenesRepo = data.tree
+                        .filter(item => {
+                            if (item.type !== 'blob') return false;
+                            const ext = item.path.split('.').pop().toLowerCase();
+                            // Excluir index.html u otros archivos que no sean imágenes
+                            return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+                        })
+                        .map(item => ({
+                            name: item.path,
+                            download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/${item.path}`
+                        }));
+                }
+            } catch (error) {
+                console.warn("Error leyendo el árbol de GitHub:", error);
+                listaImagenesRepo = [];
+            }
+
+            actualizarSelectRepo();
+        }
+
+        function actualizarSelectRepo() {
             const select = document.getElementById('selectImagen');
             select.innerHTML = '';
 
             if (listaImagenesRepo.length === 0) {
-                select.innerHTML = '<option value="">No hay estampas configuradas</option>';
+                select.innerHTML = '<option value="">No se detectaron imágenes en el repositorio</option>';
                 return;
             }
 
@@ -275,7 +297,7 @@
             }, 40);
         }
 
-        // MOTOR DE ESTAMPADO Y SELLADO ATÓMICO CON GARANTÍA GRÁFICA
+        // MOTOR DE ESTAMPADO Y SELLADO ATÓMICO
         document.getElementById('btnGenerarAviso').addEventListener('click', () => {
             const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
@@ -295,7 +317,7 @@
             imgBase.src = imgUrl + (imgUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
 
             imgBase.onerror = () => {
-                alert("No se pudo cargar la imagen seleccionada. Verificá que el archivo exista en tu repositorio con ese nombre exacto.");
+                alert("No se pudo cargar la imagen seleccionada desde el repositorio.");
             };
 
             imgBase.onload = () => {
@@ -317,7 +339,7 @@
 
                 const hashRespaldo = "HASH-ATOMIC-" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + ahora.getTime().toString(36).toUpperCase();
 
-                // 1. FRANJA INFERIOR TÉCNICA (Reloj Casio + Fecha + Hash)
+                // 1. FRANJA INFERIOR TÉCNICA
                 const panelAlto = 190;
                 ctx.fillStyle = "rgba(5, 8, 20, 0.95)";
                 ctx.fillRect(0, canvas.height - panelAlto, canvas.width, panelAlto);
@@ -470,7 +492,7 @@
 
             let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
-            // 1. Avisos fijos guardados en la vidriera
+            // 1. Mostrar avisos fijos sellados y guardados
             avisosGuardados.forEach((aviso) => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -492,7 +514,7 @@
                 grid.appendChild(card);
             });
 
-            // 2. Estampas del repositorio con reloj dinámico
+            // 2. Mostrar exactamente las estampas originales que estén en el repo (con su reloj en vivo)
             if (listaImagenesRepo.length > 0) {
                 listaImagenesRepo.forEach((img, index) => {
                     const cardId = `reloj-repo-${index}`;

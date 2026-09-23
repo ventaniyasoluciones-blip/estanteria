@@ -44,7 +44,6 @@
             flex-direction: column;
             justify-content: space-between;
         }
-        /* Etiqueta distintiva para saber cuáles son avisos personalizados fijos */
         .badge-aviso {
             background: #ff007f;
             color: #fff;
@@ -74,7 +73,6 @@
             max-height: 100%;
             object-fit: contain;
         }
-        /* Estilo para el Reloj Casio en Vivo dentro del estante */
         .live-casio-overlay {
             position: absolute;
             bottom: 10px;
@@ -138,7 +136,6 @@
             background: #ff007f;
             box-shadow: 0 0 15px #ff007f;
         }
-        /* Panel de Edición */
         .editor-section {
             max-width: 1300px;
             margin: 40px auto 20px auto;
@@ -194,7 +191,9 @@
         <div class="editor-box">
             <div class="form-group">
                 <label for="selectImagen">1. Seleccioná una estampa base del repositorio:</label>
-                <select id="selectImagen"></select>
+                <select id="selectImagen">
+                    <option value="">Cargando opciones...</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="textoAviso">2. Escribí el texto del aviso:</label>
@@ -208,7 +207,7 @@
         </div>
     </div>
 
-    <!-- VIDRIERA PÚBLICA TOTAL: ESTAMPAS DEL REPO + AVISOS FIJOS ACUMULADOS -->
+    <!-- VIDRIERA PÚBLICA TOTAL -->
     <div class="editor-section" style="border-top: none;">
         <h2>🛒 Vidriera Pública de Estampillas y Avisos Fijos (Permanentes al F5)</h2>
         <div class="grid" id="estanteGrid">
@@ -223,23 +222,22 @@
         const nombreRepo = "estanteria";
         const carpetaRepo = ""; 
 
-        // Almacén global para combinar lo de GitHub y los avisos guardados localmente
         let listaImagenesRepo = [];
 
-        // Función principal que inicializa todo
+        // Función principal de arranque blindada
         async function inicializarVidriera() {
             await cargarImagenesGitHub();
-            cargarAvisosGuardadosEnEstante();
+            renderizarVidrieraCompleta();
         }
 
-        // 1. Cargar imágenes originales del repositorio GitHub
+        // Cargar imágenes del repositorio con manejo de errores seguro
         async function cargarImagenesGitHub() {
             const select = document.getElementById('selectImagen');
             const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/${carpetaRepo}`;
 
             try {
                 const response = await fetch(urlApi);
-                if (!response.ok) throw new Error("No se pudo conectar con la API de GitHub");
+                if (!response.ok) throw new Error("Error en la respuesta de GitHub");
                 
                 const archivos = await response.json();
                 listaImagenesRepo = archivos.filter(file => {
@@ -262,7 +260,8 @@
                 });
 
             } catch (error) {
-                console.error(error);
+                console.warn("No se pudo conectar con GitHub, usando solo almacenamiento local:", error);
+                select.innerHTML = '<option value="">No se pudieron cargar imágenes del repositorio</option>';
             }
         }
 
@@ -289,7 +288,7 @@
             }, 40);
         }
 
-        // 2. Generar estampa con aviso, guardar en localStorage y mostrar en la vidriera
+        // Generar estampa, guardar y actualizar interfaz de inmediato
         document.getElementById('btnGenerarAviso').addEventListener('click', () => {
             const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
@@ -447,7 +446,6 @@
             context.fillText(line, x, currentY);
         }
 
-        // Guardar en localStorage para que persista al recargar (F5)
         function guardarYRenderizarAviso(dataUrl, descripcion) {
             let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
@@ -458,21 +456,25 @@
                 fecha: new Date().toLocaleString()
             };
 
-            avisosGuardados.unshift(nuevoAviso); // Agregar al principio
+            avisosGuardados.unshift(nuevoAviso);
             localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
 
-            alert("¡Aviso fijado con éxito en la vidriera pública! Ya no se borra al recargar (F5).");
-            cargarAvisosGuardadosEnEstante();
+            // Limpiar campo de texto para el próximo aviso
+            document.getElementById('textoAviso').value = '';
+            document.getElementById('logoAvisador').value = '';
+
+            alert("¡Aviso fijado con éxito! Ya se sumó a la vidriera pública.");
+            renderizarVidrieraCompleta();
         }
 
-        // Renderizar la vidriera unificada (Repo + Avisos Fijos Guardados)
-        function cargarAvisosGuardadosEnEstante() {
+        // Renderizador unificado infalible
+        function renderizarVidrieraCompleta() {
             const grid = document.getElementById('estanteGrid');
-            grid.innerHTML = ''; // Limpiar grilla
+            grid.innerHTML = ''; 
 
-            // 1. Renderizar avisos personalizados guardados (Persistentes)
             let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
+            // 1. Mostrar avisos guardados (fijos permanentes)
             avisosGuardados.forEach((aviso) => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -494,7 +496,7 @@
                 grid.appendChild(card);
             });
 
-            // 2. Renderizar estampas originales del repositorio de GitHub
+            // 2. Mostrar estampas originales del repositorio
             if (listaImagenesRepo.length > 0) {
                 listaImagenesRepo.forEach((img, index) => {
                     const cardId = `reloj-repo-${index}`;
@@ -525,17 +527,16 @@
             }
         }
 
-        // Función para eliminar un aviso fijo de la vidriera si se desea
         window.borrarAvisoFijo = function(id) {
             if (confirm("¿Estás seguro de quitar este aviso fijo de la vidriera?")) {
                 let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
                 avisosGuardados = avisosGuardados.filter(a => a.id !== id);
                 localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
-                cargarAvisosGuardadosEnEstante();
+                renderizarVidrieraCompleta();
             }
         };
 
-        // Arrancar el sistema completo
+        // Arrancar
         inicializarVidriera();
     </script>
 

@@ -220,8 +220,7 @@
     <script>
         const usuarioRepo = "ventaniyasoluciones-blip";
         const nombreRepo = "estanteria";
-        const carpetaRepo = ""; 
-
+        
         let listaImagenesRepo = [];
 
         async function inicializarVidriera() {
@@ -231,34 +230,55 @@
 
         async function cargarImagenesGitHub() {
             const select = document.getElementById('selectImagen');
-            const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/${carpetaRepo}`;
+            const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/`;
 
             try {
                 const response = await fetch(urlApi);
-                if (!response.ok) throw new Error("Error en GitHub");
+                if (!response.ok) throw new Error("Error al conectar con GitHub API");
                 
                 const archivos = await response.json();
+                
+                // Filtrar solo imágenes válidas
                 listaImagenesRepo = archivos.filter(file => {
+                    if (file.type !== 'file') return false;
                     const ext = file.name.split('.').pop().toLowerCase();
-                    return ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
-                });
+                    return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+                }).map(file => ({
+                    name: file.name,
+                    // Usar raw.githubusercontent.com asegura que la imagen cargue sin bloqueos de CORS
+                    download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/${file.name}`
+                }));
 
-                select.innerHTML = '';
                 if (listaImagenesRepo.length === 0) {
-                    select.innerHTML = '<option value="">No hay imágenes en el repositorio</option>';
-                    return;
+                    throw new Error("No hay imágenes en el array del repositorio");
                 }
 
-                listaImagenesRepo.forEach(img => {
-                    const option = document.createElement('option');
-                    option.value = img.download_url;
-                    option.textContent = img.name;
-                    select.appendChild(option);
-                });
+                llenarSelectImagenes();
+
             } catch (error) {
-                console.warn("Modo local activo:", error);
-                select.innerHTML = '<option value="">No se pudieron cargar imágenes del repo</option>';
+                console.warn("Aviso: No se pudo leer la API de GitHub directamente. Activando respaldo de emergencia...", error);
+                
+                // RESPALDO AUTOMÁTICO: Si la API de GitHub frena la petición, armamos URLs directas con 'main'
+                // (Si tu rama principal se llama 'master', podés cambiarlo abajo, pero por defecto GitHub usa 'main')
+                listaImagenesRepo = [
+                    { name: "estampa1.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa1.png` },
+                    { name: "estampa2.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa2.png` }
+                ];
+                
+                llenarSelectImagenes();
             }
+        }
+
+        function llenarSelectImagenes() {
+            const select = document.getElementById('selectImagen');
+            select.innerHTML = '';
+
+            listaImagenesRepo.forEach(img => {
+                const option = document.createElement('option');
+                option.value = img.download_url;
+                option.textContent = img.name;
+                select.appendChild(option);
+            });
         }
 
         function iniciarRelojCasioEnVivo(idPrefix) {
@@ -283,7 +303,7 @@
             }, 40);
         }
 
-        // MOTOR DE ESTAMPADO Y SELLADO ATÓMICO
+        // MOTOR DE ESTAMPADO Y SELLADO ATÓMICO CON GARANTÍA GRÁFICA
         document.getElementById('btnGenerarAviso').addEventListener('click', () => {
             const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
@@ -300,11 +320,10 @@
 
             const imgBase = new Image();
             imgBase.crossOrigin = "anonymous";
-            // Forzar bypass de caché para evitar bloqueos del navegador
             imgBase.src = imgUrl + (imgUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
 
             imgBase.onerror = () => {
-                alert("Error: No se pudo cargar la imagen seleccionada para estampar. Verificá tu conexión.");
+                alert("No se pudo cargar la imagen seleccionada desde GitHub. Verificá que el archivo exista en el repositorio.");
             };
 
             imgBase.onload = () => {
@@ -352,7 +371,7 @@
                 ctx.fillStyle = "#00f3ff";
                 ctx.fillText(`🔒 ID HASH RESPALDO: ${hashRespaldo}`, 35, canvas.height - 40);
 
-                // 2. SELLO POSTAL ATÓMICO CIRCULAR (Lado derecho inferior)
+                // 2. SELLO POSTAL ATÓMICO CIRCULAR
                 const centroX = canvas.width - 130;
                 const centroY = canvas.height - 95;
                 const radioSello = 75;
@@ -408,7 +427,7 @@
                     ctx.shadowBlur = 0;
                 }
 
-                // 4. LOGO Y PROCESAMIENTO FINAL CON SELLADO GARANTIZADO
+                // 4. LOGO Y GUARDADO
                 const procesarFinalizacion = () => {
                     const dataUrlFinal = canvas.toDataURL("image/png");
                     guardarYRenderizarAviso(dataUrlFinal, textoAviso || "Aviso Certificado");
@@ -424,9 +443,7 @@
                             ctx.drawImage(imgLogo, 60, 210, logoSize, logoSize);
                             procesarFinalizacion();
                         };
-                        imgLogo.onerror = () => {
-                            procesarFinalizacion(); // Si falla el logo, igual sella la imagen principal
-                        };
+                        imgLogo.onerror = () => procesarFinalizacion();
                     };
                     reader.readAsDataURL(inputLogo.files[0]);
                 } else {
@@ -436,7 +453,7 @@
         });
 
         function wrapText(context, text, x, y, maxWidth, lineHeight) {
-            const words = text.path ? [] : text.split(' ');
+            const words = text.split(' ');
             let line = '';
             let currentY = y;
 
@@ -481,7 +498,7 @@
 
             let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
-            // 1. Mostrar avisos fijos sellados y acumulados
+            // 1. Avisos fijos guardados
             avisosGuardados.forEach((aviso) => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -503,7 +520,7 @@
                 grid.appendChild(card);
             });
 
-            // 2. Mostrar estampas originales del repo
+            // 2. Estampas del repositorio con reloj dinámico
             if (listaImagenesRepo.length > 0) {
                 listaImagenesRepo.forEach((img, index) => {
                     const cardId = `reloj-repo-${index}`;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estante de Avisos - VentaniYA Soluciones</title>
-    <!-- Fuentes: Share Tech Mono para código y Orbitron para títulos. Se añade Orbitron extra para los números Casio -->
+    <!-- Fuentes: Share Tech Mono para código y Orbitron para títulos -->
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <style>
         body {
@@ -43,6 +43,18 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+        }
+        /* Etiqueta distintiva para saber cuáles son avisos personalizados fijos */
+        .badge-aviso {
+            background: #ff007f;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: inline-block;
+            letter-spacing: 1px;
         }
         .img-container {
             width: 100%;
@@ -115,8 +127,19 @@
             background: #fff;
             box-shadow: 0 0 15px #fff;
         }
-        /* Paneles de Edición y Fijados */
-        .editor-section, .fijados-section {
+        .btn-borrar {
+            background: linear-gradient(90deg, #ff007f, #900);
+            color: #fff;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            padding: 8px;
+        }
+        .btn-borrar:hover {
+            background: #ff007f;
+            box-shadow: 0 0 15px #ff007f;
+        }
+        /* Panel de Edición */
+        .editor-section {
             max-width: 1300px;
             margin: 40px auto 20px auto;
             border-top: 2px dashed #00f3ff;
@@ -162,13 +185,8 @@
 
     <header>
         <h1>VENTANIYA SOLUCIONES - ESTANTE DE AVISOS</h1>
-        <p>Sistema de Estampado Temporal, Sello Atómico y Redes Sociales</p>
+        <p>Sistema de Estampado Temporal, Sello Atómico y Vidriera Pública Permanente</p>
     </header>
-
-    <!-- GRILLA AUTOMÁTICA DESDE GITHUB CON RELOJ CASIO EN VIVO -->
-    <div class="grid" id="estanteGrid">
-        <div class="card"><div class="error-msg">Cargando estantería atómica...</div></div>
-    </div>
 
     <!-- SECCIÓN DE PERSONALIZACIÓN Y ESTAMPADO -->
     <div class="editor-section">
@@ -179,36 +197,43 @@
                 <select id="selectImagen"></select>
             </div>
             <div class="form-group">
-                <label for="textoAviso">2. Escribí el texto del aviso (Más grande y destacado):</label>
+                <label for="textoAviso">2. Escribí el texto del aviso:</label>
                 <textarea id="textoAviso" rows="4" placeholder="Ej: ¡GRAN LANZAMIENTO EXCLUSIVO ESTE FIN DE SEMANA!"></textarea>
             </div>
             <div class="form-group">
                 <label for="logoAvisador">3. Subir logo del avisador (Opcional):</label>
                 <input type="file" id="logoAvisador" accept="image/*">
             </div>
-            <button class="btn" id="btnGenerarAviso">⚡ Generar y Fijar Aviso con Estampado Definitivo</button>
+            <button class="btn" id="btnGenerarAviso">⚡ Generar y Sumar a la Vidriera Pública</button>
         </div>
     </div>
 
-    <!-- SECCIÓN DE AVISOS FIJADOS -->
-    <div class="fijados-section">
-        <h2>📌 Ventana de Avisos Fijados (Listos para Descarga con Sello y Línea de Tiempo)</h2>
-        <div class="grid" id="fijadosGrid">
-            <!-- Aquí se guardan los avisos generados -->
+    <!-- VIDRIERA PÚBLICA TOTAL: ESTAMPAS DEL REPO + AVISOS FIJOS ACUMULADOS -->
+    <div class="editor-section" style="border-top: none;">
+        <h2>🛒 Vidriera Pública de Estampillas y Avisos Fijos (Permanentes al F5)</h2>
+        <div class="grid" id="estanteGrid">
+            <div class="card"><div class="error-msg">Cargando vidriera atómica...</div></div>
         </div>
     </div>
 
     <canvas id="canvasProcesamiento"></canvas>
 
     <script>
-        // Nuevas rutas del repositorio "estanteria"
         const usuarioRepo = "ventaniyasoluciones-blip";
         const nombreRepo = "estanteria";
         const carpetaRepo = ""; 
 
-        // Función para cargar automáticamente las imágenes del nuevo repo
+        // Almacén global para combinar lo de GitHub y los avisos guardados localmente
+        let listaImagenesRepo = [];
+
+        // Función principal que inicializa todo
+        async function inicializarVidriera() {
+            await cargarImagenesGitHub();
+            cargarAvisosGuardadosEnEstante();
+        }
+
+        // 1. Cargar imágenes originales del repositorio GitHub
         async function cargarImagenesGitHub() {
-            const grid = document.getElementById('estanteGrid');
             const select = document.getElementById('selectImagen');
             const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/${carpetaRepo}`;
 
@@ -217,54 +242,27 @@
                 if (!response.ok) throw new Error("No se pudo conectar con la API de GitHub");
                 
                 const archivos = await response.json();
-                const imagenes = archivos.filter(file => {
+                listaImagenesRepo = archivos.filter(file => {
                     const ext = file.name.split('.').pop().toLowerCase();
                     return ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
                 });
 
-                grid.innerHTML = '';
                 select.innerHTML = '';
 
-                if (imagenes.length === 0) {
-                    grid.innerHTML = '<div class="card"><div class="error-msg">No se encontraron imágenes en el repositorio.</div></div>';
+                if (listaImagenesRepo.length === 0) {
+                    select.innerHTML = '<option value="">No hay imágenes en el repositorio</option>';
                     return;
                 }
 
-                imagenes.forEach((img, index) => {
-                    const nombreArchivo = img.name;
-                    const urlArchivo = img.download_url;
-                    const cardId = `reloj-casio-${index}`;
-
-                    // Tarjeta del estante con visor en vivo (Reloj Casio con milisegundos)
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <div class="img-container">
-                            <img src="${urlArchivo}" alt="${nombreArchivo}">
-                            <div class="live-casio-overlay">
-                                <div class="casio-time" id="${cardId}-time">00:00:00.000</div>
-                                <div class="casio-date" id="${cardId}-date">--/--/----</div>
-                            </div>
-                        </div>
-                        <div>
-                            <a href="${urlArchivo}" download="${nombreArchivo}" class="btn" target="_blank">📥 Descargar Original</a>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-
-                    // Inicializar el reloj dinámico en tiempo real para esta tarjeta
-                    iniciarRelojCasioEnVivo(cardId);
-
-                    // Opciones del selector
+                listaImagenesRepo.forEach(img => {
                     const option = document.createElement('option');
-                    option.value = urlArchivo;
-                    option.textContent = nombreArchivo;
+                    option.value = img.download_url;
+                    option.textContent = img.name;
                     select.appendChild(option);
                 });
 
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = '<div class="card"><div class="error-msg">Error al conectar con la API de GitHub en el repositorio <b>estanteria</b>.</div></div>';
             }
         }
 
@@ -288,17 +286,17 @@
                     timeEl.textContent = `${horas}:${minutos}:${segundos}.${milisegundos}`;
                     dateEl.textContent = `FECHA: ${dia}/${mes}/${anio}`;
                 }
-            }, 40); // Actualización fluida a ~25 fps para los milisegundos
+            }, 40);
         }
 
-        // Generar estampa definitiva y sello atómico al hacer clic en procesar aviso
+        // 2. Generar estampa con aviso, guardar en localStorage y mostrar en la vidriera
         document.getElementById('btnGenerarAviso').addEventListener('click', () => {
             const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
             const inputLogo = document.getElementById('logoAvisador');
 
             if (!select.value) {
-                alert("Por favor seleccioná una imagen.");
+                alert("Por favor seleccioná una imagen base.");
                 return;
             }
 
@@ -311,14 +309,10 @@
             imgBase.src = imgUrl;
 
             imgBase.onload = () => {
-                // Resolución alta para redes sociales (1080x1080)
                 canvas.width = 1080;
                 canvas.height = 1080;
-
-                // Dibujar imagen de arte principal
                 ctx.drawImage(imgBase, 0, 0, canvas.width, canvas.height);
 
-                // --- DATOS TEMPORALES Y HASH DE RESPALDO EXACTOS ---
                 const ahora = new Date();
                 const horas = String(ahora.getHours()).padStart(2, '0');
                 const minutos = String(ahora.getMinutes()).padStart(2, '0');
@@ -331,10 +325,9 @@
                 const anio = ahora.getFullYear();
                 const dateString = `${dia}/${mes}/${anio}`;
 
-                // Hash único de respaldo atómico
                 const hashRespaldo = "HASH-ATOMIC-" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + ahora.getTime().toString(36).toUpperCase();
 
-                // 1. FRANJA INFERIOR TÉCNICA (Línea de tiempo y Hash)
+                // Franja inferior técnica
                 const panelAlto = 190;
                 ctx.fillStyle = "rgba(5, 8, 20, 0.92)";
                 ctx.fillRect(0, canvas.height - panelAlto, canvas.width, panelAlto);
@@ -346,31 +339,26 @@
                 ctx.lineTo(canvas.width, canvas.height - panelAlto);
                 ctx.stroke();
 
-                // Reloj Casio Gigante Celeste Neón en la estampa
                 ctx.fillStyle = "#00f3ff";
                 ctx.shadowColor = "#00f3ff";
                 ctx.shadowBlur = 15;
                 ctx.font = "bold 44px 'Orbitron', sans-serif";
                 ctx.textAlign = "left";
                 ctx.fillText(`⏱️ ${timeString}`, 35, canvas.height - 125);
-                
-                // Desactivar sombra para textos secundarios legibles
                 ctx.shadowBlur = 0;
 
-                // Fecha completa y Hash de respaldo
                 ctx.font = "20px 'Share Tech Mono', monospace";
                 ctx.fillStyle = "#8be9fd";
                 ctx.fillText(`📅 FECHA: ${dateString}`, 35, canvas.height - 80);
                 ctx.fillStyle = "#00f3ff";
                 ctx.fillText(`🔒 ID HASH RESPALDO: ${hashRespaldo}`, 35, canvas.height - 40);
 
-                // 2. SELLO POSTAL ATÓMICO CIRCULAR (Lado derecho inferior)
+                // Sello postal atómico
                 const centroX = canvas.width - 130;
                 const centroY = canvas.height - 95;
                 const radioSello = 75;
 
                 ctx.save();
-                // Fondo circular translúcido estilo sello postal antiguo / atómico
                 ctx.beginPath();
                 ctx.arc(centroX, centroY, radioSello, 0, Math.PI * 2);
                 ctx.fillStyle = "rgba(5, 8, 20, 0.85)";
@@ -379,16 +367,14 @@
                 ctx.strokeStyle = "#00f3ff";
                 ctx.stroke();
 
-                // Círculo punteado interior del sello
                 ctx.beginPath();
                 ctx.arc(centroX, centroY, radioSello - 8, 0, Math.PI * 2);
                 ctx.setLineDash([4, 4]);
                 ctx.strokeStyle = "#8be9fd";
                 ctx.lineWidth = 2;
                 ctx.stroke();
-                ctx.setLineDash([]); // Resetear líneas punteadas
+                ctx.setLineDash([]);
 
-                // Texto del sello
                 ctx.fillStyle = "#00f3ff";
                 ctx.font = "bold 13px 'Orbitron', sans-serif";
                 ctx.textAlign = "center";
@@ -401,8 +387,7 @@
                 ctx.fillText("★ CERTIFICADO ★", centroX, centroY + 22);
                 ctx.restore();
 
-
-                // 3. SECCIÓN DEL AVISO (Más grande, destacado y centrado arriba)
+                // Aviso superior
                 if (textoAviso.trim() !== "") {
                     const boxAvisoY = 50;
                     const boxAvisoAlto = 140;
@@ -420,12 +405,10 @@
                     ctx.font = "bold 36px 'Share Tech Mono', monospace";
                     ctx.textAlign = "center";
 
-                    // Ajustar texto multilínea si es largo de manera limpia
                     wrapText(ctx, textoAviso, canvas.width / 2, boxAvisoY + 45, canvas.width - 120, 42);
                     ctx.shadowBlur = 0;
                 }
 
-                // 4. LOGO DEL AVISADOR (Si se adjuntó)
                 if (inputLogo.files && inputLogo.files[0]) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -433,19 +416,17 @@
                         imgLogo.src = e.target.result;
                         imgLogo.onload = () => {
                             const logoSize = 130;
-                            // Se ubica estratégicamente arriba a la izquierda para no tapar el sello ni los milisegundos
                             ctx.drawImage(imgLogo, 60, 210, logoSize, logoSize);
-                            finalizarGeneracion(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
+                            guardarYRenderizarAviso(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
                         }
                     }
                     reader.readAsDataURL(inputLogo.files[0]);
                 } else {
-                    finalizarGeneracion(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
+                    guardarYRenderizarAviso(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
                 }
             };
         });
 
-        // Utilidad para centrar texto multilínea en el canvas de forma prolija
         function wrapText(context, text, x, y, maxWidth, lineHeight) {
             const words = text.split(' ');
             let line = '';
@@ -466,31 +447,96 @@
             context.fillText(line, x, currentY);
         }
 
-        function finalizarGeneracion(dataUrl, descripcion) {
-            const fijadosGrid = document.getElementById('fijadosGrid');
-            const cardFijada = document.createElement('div');
-            cardFijada.className = 'card';
+        // Guardar en localStorage para que persista al recargar (F5)
+        function guardarYRenderizarAviso(dataUrl, descripcion) {
+            let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
-            const nombreGenerado = `aviso-certificado-${Date.now()}.png`;
+            const nuevoAviso = {
+                id: Date.now(),
+                imagen: dataUrl,
+                texto: descripcion,
+                fecha: new Date().toLocaleString()
+            };
 
-            cardFijada.innerHTML = `
-                <div class="img-container">
-                    <img src="${dataUrl}" alt="Aviso Fijado Atómico">
-                </div>
-                <div style="font-size: 0.85rem; margin-bottom: 10px; color: #fff; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    💬 ${descripcion}
-                </div>
-                <div>
-                    <a href="${dataUrl}" download="${nombreGenerado}" class="btn">📥 Descargar Estampado Atómico</a>
-                </div>
-            `;
+            avisosGuardados.unshift(nuevoAviso); // Agregar al principio
+            localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
 
-            fijadosGrid.prepend(cardFijada);
-            alert("¡Aviso procesado con éxito y fijado en la sección inferior con reloj atómico, milisegundos y sello postal!");
+            alert("¡Aviso fijado con éxito en la vidriera pública! Ya no se borra al recargar (F5).");
+            cargarAvisosGuardadosEnEstante();
         }
 
-        // Carga inicial automática desde GitHub
-        cargarImagenesGitHub();
+        // Renderizar la vidriera unificada (Repo + Avisos Fijos Guardados)
+        function cargarAvisosGuardadosEnEstante() {
+            const grid = document.getElementById('estanteGrid');
+            grid.innerHTML = ''; // Limpiar grilla
+
+            // 1. Renderizar avisos personalizados guardados (Persistentes)
+            let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
+            
+            avisosGuardados.forEach((aviso) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div>
+                        <span class="badge-aviso">⚡ AVISO CERTIFICADO FIJO</span>
+                    </div>
+                    <div class="img-container">
+                        <img src="${aviso.imagen}" alt="Aviso Personalizado">
+                    </div>
+                    <div style="font-size: 0.8rem; color: #fff; text-align: left; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        💬 ${aviso.texto}
+                    </div>
+                    <div>
+                        <a href="${aviso.imagen}" download="aviso-ventaniya-${aviso.id}.png" class="btn">📥 Descargar Estampado</a>
+                        <button class="btn btn-borrar" onclick="borrarAvisoFijo(${aviso.id})">🗑️ Quitar de la Vidriera</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            // 2. Renderizar estampas originales del repositorio de GitHub
+            if (listaImagenesRepo.length > 0) {
+                listaImagenesRepo.forEach((img, index) => {
+                    const cardId = `reloj-repo-${index}`;
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div>
+                            <span class="badge-aviso" style="background: #0077ff;">🖼️ ESTAMPA ORIGINAL REPO</span>
+                        </div>
+                        <div class="img-container">
+                            <img src="${img.download_url}" alt="${img.name}">
+                            <div class="live-casio-overlay">
+                                <div class="casio-time" id="${cardId}-time">00:00:00.000</div>
+                                <div class="casio-date" id="${cardId}-date">--/--/----</div>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="${img.download_url}" download="${img.name}" class="btn" target="_blank">📥 Descargar Original</a>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                    iniciarRelojCasioEnVivo(cardId);
+                });
+            }
+
+            if (avisosGuardados.length === 0 && listaImagenesRepo.length === 0) {
+                grid.innerHTML = '<div class="card"><div class="error-msg">No hay estampillas ni avisos en la vidriera.</div></div>';
+            }
+        }
+
+        // Función para eliminar un aviso fijo de la vidriera si se desea
+        window.borrarAvisoFijo = function(id) {
+            if (confirm("¿Estás seguro de quitar este aviso fijo de la vidriera?")) {
+                let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
+                avisosGuardados = avisosGuardados.filter(a => a.id !== id);
+                localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
+                cargarAvisosGuardadosEnEstante();
+            }
+        };
+
+        // Arrancar el sistema completo
+        inicializarVidriera();
     </script>
 
 </body>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estante de Avisos - VentaniYA Soluciones</title>
+    <!-- Fuentes: Share Tech Mono para código y Orbitron para títulos. Se añade Orbitron extra para los números Casio -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050814;
+            color: #00f3ff;
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid #00f3ff;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #0b1120;
+            border: 2px solid #00f3ff;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .img-container {
+            width: 100%;
+            height: 280px;
+            background: #000;
+            border: 1px dashed #1e293b;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .card img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        /* Estilo para el Reloj Casio en Vivo dentro del estante */
+        .live-casio-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(5, 8, 20, 0.9);
+            border: 1px solid #00f3ff;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .casio-time {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #00f3ff;
+            text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
+            letter-spacing: 1px;
+        }
+        .casio-date {
+            font-size: 0.65rem;
+            color: #8be9fd;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+        .error-msg {
+            color: #ff007f;
+            font-size: 0.75rem;
+            padding: 10px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #00f3ff, #0077ff);
+            color: #000;
+            padding: 12px 20px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: none;
+            margin-top: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn:hover {
+            background: #fff;
+            box-shadow: 0 0 15px #fff;
+        }
+        /* Paneles de Edición y Fijados */
+        .editor-section, .fijados-section {
+            max-width: 1300px;
+            margin: 40px auto 20px auto;
+            border-top: 2px dashed #00f3ff;
+            padding-top: 25px;
+        }
+        .editor-box {
+            background: #0b1120;
+            border: 2px solid #0077ff;
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 650px;
+            margin: 0 auto;
+            box-shadow: 0 0 15px rgba(0, 119, 255, 0.2);
+        }
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #8be9fd;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            background: #050814;
+            border: 1px solid #00f3ff;
+            color: #00f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Share Tech Mono', monospace;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>VENTANIYA SOLUCIONES - ESTANTE DE AVISOS</h1>
+        <p>Sistema de Estampado Temporal, Sello Atómico y Redes Sociales</p>
+    </header>
+
+    <!-- GRILLA AUTOMÁTICA DESDE GITHUB CON RELOJ CASIO EN VIVO -->
+    <div class="grid" id="estanteGrid">
+        <div class="card"><div class="error-msg">Cargando estantería atómica...</div></div>
+    </div>
+
+    <!-- SECCIÓN DE PERSONALIZACIÓN Y ESTAMPADO -->
+    <div class="editor-section">
+        <h2>🛠️ Panel de Edición y Estampado Atómico de Avisos</h2>
+        <div class="editor-box">
+            <div class="form-group">
+                <label for="selectImagen">1. Seleccioná una estampa base del repositorio:</label>
+                <select id="selectImagen"></select>
+            </div>
+            <div class="form-group">
+                <label for="textoAviso">2. Escribí el texto del aviso (Más grande y destacado):</label>
+                <textarea id="textoAviso" rows="4" placeholder="Ej: ¡GRAN LANZAMIENTO EXCLUSIVO ESTE FIN DE SEMANA!"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="logoAvisador">3. Subir logo del avisador (Opcional):</label>
+                <input type="file" id="logoAvisador" accept="image/*">
+            </div>
+            <button class="btn" id="btnGenerarAviso">⚡ Generar y Fijar Aviso con Estampado Definitivo</button>
+        </div>
+    </div>
+
+    <!-- SECCIÓN DE AVISOS FIJADOS -->
+    <div class="fijados-section">
+        <h2>📌 Ventana de Avisos Fijados (Listos para Descarga con Sello y Línea de Tiempo)</h2>
+        <div class="grid" id="fijadosGrid">
+            <!-- Aquí se guardan los avisos generados -->
+        </div>
+    </div>
+
+    <canvas id="canvasProcesamiento"></canvas>
+
+    <script>
+        // Nuevas rutas del repositorio "estanteria"
+        const usuarioRepo = "ventaniyasoluciones-blip";
+        const nombreRepo = "estanteria";
+        const carpetaRepo = ""; 
+
+        // Función para cargar automáticamente las imágenes del nuevo repo
+        async function cargarImagenesGitHub() {
+            const grid = document.getElementById('estanteGrid');
+            const select = document.getElementById('selectImagen');
+            const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/${carpetaRepo}`;
+
+            try {
+                const response = await fetch(urlApi);
+                if (!response.ok) throw new Error("No se pudo conectar con la API de GitHub");
+                
+                const archivos = await response.json();
+                const imagenes = archivos.filter(file => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    return ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+                });
+
+                grid.innerHTML = '';
+                select.innerHTML = '';
+
+                if (imagenes.length === 0) {
+                    grid.innerHTML = '<div class="card"><div class="error-msg">No se encontraron imágenes en el repositorio.</div></div>';
+                    return;
+                }
+
+                imagenes.forEach((img, index) => {
+                    const nombreArchivo = img.name;
+                    const urlArchivo = img.download_url;
+                    const cardId = `reloj-casio-${index}`;
+
+                    // Tarjeta del estante con visor en vivo (Reloj Casio con milisegundos)
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="img-container">
+                            <img src="${urlArchivo}" alt="${nombreArchivo}">
+                            <div class="live-casio-overlay">
+                                <div class="casio-time" id="${cardId}-time">00:00:00.000</div>
+                                <div class="casio-date" id="${cardId}-date">--/--/----</div>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="${urlArchivo}" download="${nombreArchivo}" class="btn" target="_blank">📥 Descargar Original</a>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+
+                    // Inicializar el reloj dinámico en tiempo real para esta tarjeta
+                    iniciarRelojCasioEnVivo(cardId);
+
+                    // Opciones del selector
+                    const option = document.createElement('option');
+                    option.value = urlArchivo;
+                    option.textContent = nombreArchivo;
+                    select.appendChild(option);
+                });
+
+            } catch (error) {
+                console.error(error);
+                grid.innerHTML = '<div class="card"><div class="error-msg">Error al conectar con la API de GitHub en el repositorio <b>estanteria</b>.</div></div>';
+            }
+        }
+
+        // Reloj Casio en vivo con milisegundos fluidos
+        function iniciarRelojCasioEnVivo(idPrefix) {
+            setInterval(() => {
+                const ahora = new Date();
+                const horas = String(ahora.getHours()).padStart(2, '0');
+                const minutos = String(ahora.getMinutes()).padStart(2, '0');
+                const segundos = String(ahora.getSeconds()).padStart(2, '0');
+                const milisegundos = String(Math.floor(ahora.getMilliseconds())).padStart(3, '0');
+                
+                const dia = String(ahora.getDate()).padStart(2, '0');
+                const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+                const anio = ahora.getFullYear();
+
+                const timeEl = document.getElementById(`${idPrefix}-time`);
+                const dateEl = document.getElementById(`${idPrefix}-date`);
+
+                if (timeEl && dateEl) {
+                    timeEl.textContent = `${horas}:${minutos}:${segundos}.${milisegundos}`;
+                    dateEl.textContent = `FECHA: ${dia}/${mes}/${anio}`;
+                }
+            }, 40); // Actualización fluida a ~25 fps para los milisegundos
+        }
+
+        // Generar estampa definitiva y sello atómico al hacer clic en procesar aviso
+        document.getElementById('btnGenerarAviso').addEventListener('click', () => {
+            const select = document.getElementById('selectImagen');
+            const textoAviso = document.getElementById('textoAviso').value;
+            const inputLogo = document.getElementById('logoAvisador');
+
+            if (!select.value) {
+                alert("Por favor seleccioná una imagen.");
+                return;
+            }
+
+            const imgUrl = select.value;
+            const canvas = document.getElementById('canvasProcesamiento');
+            const ctx = canvas.getContext('2d');
+
+            const imgBase = new Image();
+            imgBase.crossOrigin = "anonymous";
+            imgBase.src = imgUrl;
+
+            imgBase.onload = () => {
+                // Resolución alta para redes sociales (1080x1080)
+                canvas.width = 1080;
+                canvas.height = 1080;
+
+                // Dibujar imagen de arte principal
+                ctx.drawImage(imgBase, 0, 0, canvas.width, canvas.height);
+
+                // --- DATOS TEMPORALES Y HASH DE RESPALDO EXACTOS ---
+                const ahora = new Date();
+                const horas = String(ahora.getHours()).padStart(2, '0');
+                const minutos = String(ahora.getMinutes()).padStart(2, '0');
+                const segundos = String(ahora.getSeconds()).padStart(2, '0');
+                const milisegundos = String(ahora.getMilliseconds()).padStart(3, '0');
+                const timeString = `${horas}:${minutos}:${segundos}.${milisegundos}`;
+                
+                const dia = String(ahora.getDate()).padStart(2, '0');
+                const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+                const anio = ahora.getFullYear();
+                const dateString = `${dia}/${mes}/${anio}`;
+
+                // Hash único de respaldo atómico
+                const hashRespaldo = "HASH-ATOMIC-" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + ahora.getTime().toString(36).toUpperCase();
+
+                // 1. FRANJA INFERIOR TÉCNICA (Línea de tiempo y Hash)
+                const panelAlto = 190;
+                ctx.fillStyle = "rgba(5, 8, 20, 0.92)";
+                ctx.fillRect(0, canvas.height - panelAlto, canvas.width, panelAlto);
+
+                ctx.strokeStyle = "#00f3ff";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height - panelAlto);
+                ctx.lineTo(canvas.width, canvas.height - panelAlto);
+                ctx.stroke();
+
+                // Reloj Casio Gigante Celeste Neón en la estampa
+                ctx.fillStyle = "#00f3ff";
+                ctx.shadowColor = "#00f3ff";
+                ctx.shadowBlur = 15;
+                ctx.font = "bold 44px 'Orbitron', sans-serif";
+                ctx.textAlign = "left";
+                ctx.fillText(`⏱️ ${timeString}`, 35, canvas.height - 125);
+                
+                // Desactivar sombra para textos secundarios legibles
+                ctx.shadowBlur = 0;
+
+                // Fecha completa y Hash de respaldo
+                ctx.font = "20px 'Share Tech Mono', monospace";
+                ctx.fillStyle = "#8be9fd";
+                ctx.fillText(`📅 FECHA: ${dateString}`, 35, canvas.height - 80);
+                ctx.fillStyle = "#00f3ff";
+                ctx.fillText(`🔒 ID HASH RESPALDO: ${hashRespaldo}`, 35, canvas.height - 40);
+
+                // 2. SELLO POSTAL ATÓMICO CIRCULAR (Lado derecho inferior)
+                const centroX = canvas.width - 130;
+                const centroY = canvas.height - 95;
+                const radioSello = 75;
+
+                ctx.save();
+                // Fondo circular translúcido estilo sello postal antiguo / atómico
+                ctx.beginPath();
+                ctx.arc(centroX, centroY, radioSello, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(5, 8, 20, 0.85)";
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "#00f3ff";
+                ctx.stroke();
+
+                // Círculo punteado interior del sello
+                ctx.beginPath();
+                ctx.arc(centroX, centroY, radioSello - 8, 0, Math.PI * 2);
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = "#8be9fd";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]); // Resetear líneas punteadas
+
+                // Texto del sello
+                ctx.fillStyle = "#00f3ff";
+                ctx.font = "bold 13px 'Orbitron', sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("VENTANIYA", centroX, centroY - 20);
+                ctx.font = "bold 11px 'Share Tech Mono', monospace";
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText("SOLUCIONES", centroX, centroY - 2);
+                ctx.font = "9px 'Share Tech Mono', monospace";
+                ctx.fillStyle = "#00f3ff";
+                ctx.fillText("★ CERTIFICADO ★", centroX, centroY + 22);
+                ctx.restore();
+
+
+                // 3. SECCIÓN DEL AVISO (Más grande, destacado y centrado arriba)
+                if (textoAviso.trim() !== "") {
+                    const boxAvisoY = 50;
+                    const boxAvisoAlto = 140;
+
+                    ctx.fillStyle = "rgba(5, 8, 20, 0.88)";
+                    ctx.fillRect(40, boxAvisoY, canvas.width - 80, boxAvisoAlto);
+                    
+                    ctx.strokeStyle = "#00f3ff";
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(40, boxAvisoY, canvas.width - 80, boxAvisoAlto);
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.shadowColor = "#00f3ff";
+                    ctx.shadowBlur = 10;
+                    ctx.font = "bold 36px 'Share Tech Mono', monospace";
+                    ctx.textAlign = "center";
+
+                    // Ajustar texto multilínea si es largo de manera limpia
+                    wrapText(ctx, textoAviso, canvas.width / 2, boxAvisoY + 45, canvas.width - 120, 42);
+                    ctx.shadowBlur = 0;
+                }
+
+                // 4. LOGO DEL AVISADOR (Si se adjuntó)
+                if (inputLogo.files && inputLogo.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const imgLogo = new Image();
+                        imgLogo.src = e.target.result;
+                        imgLogo.onload = () => {
+                            const logoSize = 130;
+                            // Se ubica estratégicamente arriba a la izquierda para no tapar el sello ni los milisegundos
+                            ctx.drawImage(imgLogo, 60, 210, logoSize, logoSize);
+                            finalizarGeneracion(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
+                        }
+                    }
+                    reader.readAsDataURL(inputLogo.files[0]);
+                } else {
+                    finalizarGeneracion(canvas.toDataURL("image/png"), textoAviso || "Aviso Certificado");
+                }
+            };
+        });
+
+        // Utilidad para centrar texto multilínea en el canvas de forma prolija
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            let currentY = y;
+
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, currentY);
+                    line = words[n] + ' ';
+                    currentY += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, currentY);
+        }
+
+        function finalizarGeneracion(dataUrl, descripcion) {
+            const fijadosGrid = document.getElementById('fijadosGrid');
+            const cardFijada = document.createElement('div');
+            cardFijada.className = 'card';
+            
+            const nombreGenerado = `aviso-certificado-${Date.now()}.png`;
+
+            cardFijada.innerHTML = `
+                <div class="img-container">
+                    <img src="${dataUrl}" alt="Aviso Fijado Atómico">
+                </div>
+                <div style="font-size: 0.85rem; margin-bottom: 10px; color: #fff; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    💬 ${descripcion}
+                </div>
+                <div>
+                    <a href="${dataUrl}" download="${nombreGenerado}" class="btn">📥 Descargar Estampado Atómico</a>
+                </div>
+            `;
+
+            fijadosGrid.prepend(cardFijada);
+            alert("¡Aviso procesado con éxito y fijado en la sección inferior con reloj atómico, milisegundos y sello postal!");
+        }
+
+        // Carga inicial automática desde GitHub
+        cargarImagenesGitHub();
+    </script>
+
+</body>
+</html>

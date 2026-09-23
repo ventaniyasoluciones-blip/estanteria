@@ -218,60 +218,32 @@
     <canvas id="canvasProcesamiento"></canvas>
 
     <script>
+        // CONFIGURACIÓN DE LAS ESTAMPAS DEL REPOSITORIO
+        // Acá listás exactamente los nombres de los archivos de imagen que subiste a tu repositorio.
+        // Si subís más imágenes, simplemente agregás una línea nueva con su nombre exacto.
         const usuarioRepo = "ventaniyasoluciones-blip";
         const nombreRepo = "estanteria";
-        
-        let listaImagenesRepo = [];
 
-        async function inicializarVidriera() {
-            await cargarImagenesGitHub();
+        const listaImagenesRepo = [
+            { name: "estampa1.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa1.png` },
+            { name: "estampa2.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa2.png` }
+            // Podés agregar más estampas así:
+            // { name: "tu-imagen.jpg", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/tu-imagen.jpg` }
+        ];
+
+        function inicializarVidriera() {
+            cargarSelectImagenes();
             renderizarVidrieraCompleta();
         }
 
-        async function cargarImagenesGitHub() {
-            const select = document.getElementById('selectImagen');
-            const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/contents/`;
-
-            try {
-                const response = await fetch(urlApi);
-                if (!response.ok) throw new Error("Error al conectar con GitHub API");
-                
-                const archivos = await response.json();
-                
-                // Filtrar solo imágenes válidas
-                listaImagenesRepo = archivos.filter(file => {
-                    if (file.type !== 'file') return false;
-                    const ext = file.name.split('.').pop().toLowerCase();
-                    return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
-                }).map(file => ({
-                    name: file.name,
-                    // Usar raw.githubusercontent.com asegura que la imagen cargue sin bloqueos de CORS
-                    download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/${file.name}`
-                }));
-
-                if (listaImagenesRepo.length === 0) {
-                    throw new Error("No hay imágenes en el array del repositorio");
-                }
-
-                llenarSelectImagenes();
-
-            } catch (error) {
-                console.warn("Aviso: No se pudo leer la API de GitHub directamente. Activando respaldo de emergencia...", error);
-                
-                // RESPALDO AUTOMÁTICO: Si la API de GitHub frena la petición, armamos URLs directas con 'main'
-                // (Si tu rama principal se llama 'master', podés cambiarlo abajo, pero por defecto GitHub usa 'main')
-                listaImagenesRepo = [
-                    { name: "estampa1.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa1.png` },
-                    { name: "estampa2.png", download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa2.png` }
-                ];
-                
-                llenarSelectImagenes();
-            }
-        }
-
-        function llenarSelectImagenes() {
+        function cargarSelectImagenes() {
             const select = document.getElementById('selectImagen');
             select.innerHTML = '';
+
+            if (listaImagenesRepo.length === 0) {
+                select.innerHTML = '<option value="">No hay estampas configuradas</option>';
+                return;
+            }
 
             listaImagenesRepo.forEach(img => {
                 const option = document.createElement('option');
@@ -323,7 +295,7 @@
             imgBase.src = imgUrl + (imgUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
 
             imgBase.onerror = () => {
-                alert("No se pudo cargar la imagen seleccionada desde GitHub. Verificá que el archivo exista en el repositorio.");
+                alert("No se pudo cargar la imagen seleccionada. Verificá que el archivo exista en tu repositorio con ese nombre exacto.");
             };
 
             imgBase.onload = () => {
@@ -498,7 +470,7 @@
 
             let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
-            // 1. Avisos fijos guardados
+            // 1. Avisos fijos guardados en la vidriera
             avisosGuardados.forEach((aviso) => {
                 const card = document.createElement('div');
                 card.className = 'card';

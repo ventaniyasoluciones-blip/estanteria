@@ -97,12 +97,6 @@
             margin-top: 2px;
             letter-spacing: 0.5px;
         }
-        .error-msg {
-            color: #ff007f;
-            font-size: 0.75rem;
-            padding: 10px;
-            text-align: center;
-        }
         .btn {
             display: inline-block;
             background: linear-gradient(90deg, #00f3ff, #0077ff);
@@ -130,10 +124,6 @@
             margin-top: 8px;
             font-size: 0.75rem;
             padding: 8px;
-        }
-        .btn-borrar:hover {
-            background: #ff007f;
-            box-shadow: 0 0 15px #ff007f;
         }
         .editor-section {
             max-width: 1300px;
@@ -181,37 +171,33 @@
 
     <header>
         <h1>VENTANIYA SOLUCIONES - ESTANTE DE AVISOS</h1>
-        <p>Sistema de Estampado Temporal, Sello Atómico y Vidriera Pública Permanente</p>
+        <p>Sistema de Estampado y Vidriera Pública</p>
     </header>
 
-    <!-- PANEL DE EDICIÓN Y ESTAMPADO -->
     <div class="editor-section">
-        <h2>🛠️ Panel de Edición y Estampado Atómico de Avisos</h2>
+        <h2>🛠️ Panel de Edición y Sellado</h2>
         <div class="editor-box">
             <div class="form-group">
-                <label for="selectImagen">1. Seleccioná una estampa base del repositorio:</label>
+                <label for="selectImagen">1. Seleccioná la estampa base del repositorio:</label>
                 <select id="selectImagen">
-                    <option value="">Buscando imágenes en el repositorio...</option>
+                    <option value="">Buscando imagen...</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="textoAviso">2. Escribí el texto del aviso:</label>
-                <textarea id="textoAviso" rows="4" placeholder="Ej: ¡GRAN LANZAMIENTO EXCLUSIVO ESTE FIN DE SEMANA!"></textarea>
+                <textarea id="textoAviso" rows="4" placeholder="Ej: ¡GRAN LANZAMIENTO EXCLUSIVO!"></textarea>
             </div>
             <div class="form-group">
                 <label for="logoAvisador">3. Subir logo del avisador (Opcional):</label>
                 <input type="file" id="logoAvisador" accept="image/*">
             </div>
-            <button class="btn" id="btnGenerarAviso">⚡ Generar, Sellar y Sumar a la Vidriera</button>
+            <button class="btn" id="btnGenerarAviso">⚡ Generar Aviso y Sumar a la Vidriera</button>
         </div>
     </div>
 
-    <!-- VIDRIERA PÚBLICA -->
     <div class="editor-section" style="border-top: none;">
-        <h2>🛒 Vidriera Pública de Estampillas y Avisos Fijos (Permanentes al F5)</h2>
-        <div class="grid" id="estanteGrid">
-            <div class="card"><div class="error-msg">Cargando vidriera atómica...</div></div>
-        </div>
+        <h2>🛒 Vidriera Pública</h2>
+        <div class="grid" id="estanteGrid"></div>
     </div>
 
     <canvas id="canvasProcesamiento"></canvas>
@@ -219,77 +205,61 @@
     <script>
         const usuarioRepo = "ventaniyasoluciones-blip";
         const nombreRepo = "estanteria";
-        
-        let listaImagenesRepo = [];
+        let estampaRepo = null;
 
-        async function inicializarVidriera() {
-            await detectarImagenesAutomaticasGitHub();
-            renderizarVidrieraCompleta();
+        async function inicializar() {
+            await detectarEstampaRepo();
+            renderizarVidriera();
         }
 
-        // Lectura automática de archivos desde GitHub usando Git Trees (evita bloqueos de contenidos)
-        async function detectarImagenesAutomaticasGitHub() {
+        async function detectarEstampaRepo() {
             const urlApi = `https://api.github.com/repos/${usuarioRepo}/${nombreRepo}/git/trees/main?recursive=1`;
-
             try {
                 const response = await fetch(urlApi);
-                if (!response.ok) throw new Error("No se pudo conectar al árbol del repositorio");
-                
                 const data = await response.json();
-                
                 if (data && data.tree) {
-                    listaImagenesRepo = data.tree
-                        .filter(item => {
-                            if (item.type !== 'blob') return false;
-                            const ext = item.path.split('.').pop().toLowerCase();
-                            // Excluir index.html u otros archivos que no sean imágenes
-                            return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
-                        })
-                        .map(item => ({
-                            name: item.path,
-                            download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/${item.path}`
-                        }));
+                    const imagenEncontrada = data.tree.find(item => {
+                        if (item.type !== 'blob') return false;
+                        const ext = item.path.split('.').pop().toLowerCase();
+                        return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+                    });
+
+                    if (imagenEncontrada) {
+                        estampaRepo = {
+                            name: imagenEncontrada.path,
+                            download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/${imagenEncontrada.path}`
+                        };
+                    }
                 }
-            } catch (error) {
-                console.warn("Error leyendo el árbol de GitHub:", error);
-                listaImagenesRepo = [];
+            } catch (e) {
+                console.warn("Fallo de API, usando respaldo directo.");
             }
 
-            actualizarSelectRepo();
-        }
+            // Respaldo por si la API falla: busca un archivo común en la raíz
+            if (!estampaRepo) {
+                estampaRepo = {
+                    name: "estampa.png",
+                    download_url: `https://raw.githubusercontent.com/${usuarioRepo}/${nombreRepo}/main/estampa.png`
+                };
+            }
 
-        function actualizarSelectRepo() {
             const select = document.getElementById('selectImagen');
-            select.innerHTML = '';
-
-            if (listaImagenesRepo.length === 0) {
-                select.innerHTML = '<option value="">No se detectaron imágenes en el repositorio</option>';
-                return;
-            }
-
-            listaImagenesRepo.forEach(img => {
-                const option = document.createElement('option');
-                option.value = img.download_url;
-                option.textContent = img.name;
-                select.appendChild(option);
-            });
+            select.innerHTML = `<option value="${estampaRepo.download_url}">${estampaRepo.name}</option>`;
         }
 
-        function iniciarRelojCasioEnVivo(idPrefix) {
+        function iniciarReloj(idPrefix) {
             setInterval(() => {
                 const ahora = new Date();
                 const horas = String(ahora.getHours()).padStart(2, '0');
                 const minutos = String(ahora.getMinutes()).padStart(2, '0');
                 const segundos = String(ahora.getSeconds()).padStart(2, '0');
                 const milisegundos = String(Math.floor(ahora.getMilliseconds())).padStart(3, '0');
-                
                 const dia = String(ahora.getDate()).padStart(2, '0');
                 const mes = String(ahora.getMonth() + 1).padStart(2, '0');
                 const anio = ahora.getFullYear();
 
                 const timeEl = document.getElementById(`${idPrefix}-time`);
                 const dateEl = document.getElementById(`${idPrefix}-date`);
-
                 if (timeEl && dateEl) {
                     timeEl.textContent = `${horas}:${minutos}:${segundos}.${milisegundos}`;
                     dateEl.textContent = `FECHA: ${dia}/${mes}/${anio}`;
@@ -297,134 +267,85 @@
             }, 40);
         }
 
-        // MOTOR DE ESTAMPADO Y SELLADO ATÓMICO
         document.getElementById('btnGenerarAviso').addEventListener('click', () => {
-            const select = document.getElementById('selectImagen');
             const textoAviso = document.getElementById('textoAviso').value;
             const inputLogo = document.getElementById('logoAvisador');
 
-            if (!select.value) {
-                alert("Por favor seleccioná una imagen base.");
+            if (!estampaRepo) {
+                alert("No hay estampa disponible.");
                 return;
             }
 
-            const imgUrl = select.value;
-            const canvas = document.getElementById('canvasProcesamiento');
-            const ctx = canvas.getContext('2d');
-
             const imgBase = new Image();
             imgBase.crossOrigin = "anonymous";
-            imgBase.src = imgUrl + (imgUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
-
-            imgBase.onerror = () => {
-                alert("No se pudo cargar la imagen seleccionada desde el repositorio.");
-            };
+            imgBase.src = estampaRepo.download_url + "?t=" + Date.now();
 
             imgBase.onload = () => {
+                const canvas = document.getElementById('canvasProcesamiento');
+                const ctx = canvas.getContext('2d');
                 canvas.width = 1080;
                 canvas.height = 1080;
                 ctx.drawImage(imgBase, 0, 0, canvas.width, canvas.height);
 
                 const ahora = new Date();
-                const horas = String(ahora.getHours()).padStart(2, '0');
-                const minutos = String(ahora.getMinutes()).padStart(2, '0');
-                const segundos = String(ahora.getSeconds()).padStart(2, '0');
-                const milisegundos = String(ahora.getMilliseconds()).padStart(3, '0');
-                const timeString = `${horas}:${minutos}:${segundos}.${milisegundos}`;
-                
-                const dia = String(ahora.getDate()).padStart(2, '0');
-                const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-                const anio = ahora.getFullYear();
-                const dateString = `${dia}/${mes}/${anio}`;
+                const timeString = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}.${String(ahora.getMilliseconds()).padStart(3, '0')}`;
+                const dateString = `${String(ahora.getDate()).padStart(2, '0')}/${String(ahora.getMonth() + 1).padStart(2, '0')}/${ahora.getFullYear()}`;
+                const hashRespaldo = "HASH-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-                const hashRespaldo = "HASH-ATOMIC-" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + ahora.getTime().toString(36).toUpperCase();
-
-                // 1. FRANJA INFERIOR TÉCNICA
-                const panelAlto = 190;
+                // Franja inferior
                 ctx.fillStyle = "rgba(5, 8, 20, 0.95)";
-                ctx.fillRect(0, canvas.height - panelAlto, canvas.width, panelAlto);
-
+                ctx.fillRect(0, canvas.height - 190, canvas.width, 190);
                 ctx.strokeStyle = "#00f3ff";
                 ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.moveTo(0, canvas.height - panelAlto);
-                ctx.lineTo(canvas.width, canvas.height - panelAlto);
+                ctx.moveTo(0, canvas.height - 190);
+                ctx.lineTo(canvas.width, canvas.height - 190);
                 ctx.stroke();
 
                 ctx.fillStyle = "#00f3ff";
-                ctx.shadowColor = "#00f3ff";
-                ctx.shadowBlur = 15;
                 ctx.font = "bold 44px 'Orbitron', sans-serif";
-                ctx.textAlign = "left";
                 ctx.fillText(`⏱️ ${timeString}`, 35, canvas.height - 125);
-                ctx.shadowBlur = 0;
 
                 ctx.font = "20px 'Share Tech Mono', monospace";
                 ctx.fillStyle = "#8be9fd";
                 ctx.fillText(`📅 FECHA: ${dateString}`, 35, canvas.height - 80);
                 ctx.fillStyle = "#00f3ff";
-                ctx.fillText(`🔒 ID HASH RESPALDO: ${hashRespaldo}`, 35, canvas.height - 40);
+                ctx.fillText(`🔒 ID HASH: ${hashRespaldo}`, 35, canvas.height - 40);
 
-                // 2. SELLO POSTAL ATÓMICO CIRCULAR
-                const centroX = canvas.width - 130;
-                const centroY = canvas.height - 95;
-                const radioSello = 75;
-
-                ctx.save();
+                // Sello circular
+                const cx = canvas.width - 130, cy = canvas.height - 95;
                 ctx.beginPath();
-                ctx.arc(centroX, centroY, radioSello, 0, Math.PI * 2);
+                ctx.arc(cx, cy, 75, 0, Math.PI * 2);
                 ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
                 ctx.fill();
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = "#00f3ff";
                 ctx.stroke();
 
-                ctx.beginPath();
-                ctx.arc(centroX, centroY, radioSello - 8, 0, Math.PI * 2);
-                ctx.setLineDash([4, 4]);
-                ctx.strokeStyle = "#8be9fd";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.setLineDash([]);
-
                 ctx.fillStyle = "#00f3ff";
                 ctx.font = "bold 13px 'Orbitron', sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText("VENTANIYA", centroX, centroY - 20);
+                ctx.fillText("VENTANIYA", cx, cy - 20);
                 ctx.font = "bold 11px 'Share Tech Mono', monospace";
-                ctx.fillStyle = "#ffffff";
-                ctx.fillText("SOLUCIONES", centroX, centroY - 2);
-                ctx.font = "9px 'Share Tech Mono', monospace";
-                ctx.fillStyle = "#00f3ff";
-                ctx.fillText("★ CERTIFICADO ★", centroX, centroY + 22);
-                ctx.restore();
+                ctx.fillStyle = "#fff";
+                ctx.fillText("SOLUCIONES", cx, cy - 2);
 
-                // 3. AVISO SUPERIOR
+                // Texto superior
                 if (textoAviso.trim() !== "") {
-                    const boxAvisoY = 50;
-                    const boxAvisoAlto = 140;
-
                     ctx.fillStyle = "rgba(5, 8, 20, 0.9)";
-                    ctx.fillRect(40, boxAvisoY, canvas.width - 80, boxAvisoAlto);
-                    
+                    ctx.fillRect(40, 50, canvas.width - 80, 140);
                     ctx.strokeStyle = "#00f3ff";
                     ctx.lineWidth = 3;
-                    ctx.strokeRect(40, boxAvisoY, canvas.width - 80, boxAvisoAlto);
+                    ctx.strokeRect(40, 50, canvas.width - 80, 140);
 
-                    ctx.fillStyle = "#ffffff";
-                    ctx.shadowColor = "#00f3ff";
-                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = "#fff";
                     ctx.font = "bold 36px 'Share Tech Mono', monospace";
-                    ctx.textAlign = "center";
-
-                    wrapText(ctx, textoAviso, canvas.width / 2, boxAvisoY + 45, canvas.width - 120, 42);
-                    ctx.shadowBlur = 0;
+                    wrapText(ctx, textoAviso, canvas.width / 2, 95, canvas.width - 120, 42);
                 }
 
-                // 4. LOGO Y GUARDADO
-                const procesarFinalizacion = () => {
-                    const dataUrlFinal = canvas.toDataURL("image/png");
-                    guardarYRenderizarAviso(dataUrlFinal, textoAviso || "Aviso Certificado");
+                const finalizar = () => {
+                    const dataUrl = canvas.toDataURL("image/png");
+                    guardarAvisoFijo(dataUrl, textoAviso || "Aviso Certificado");
                 };
 
                 if (inputLogo.files && inputLogo.files[0]) {
@@ -433,15 +354,14 @@
                         const imgLogo = new Image();
                         imgLogo.src = e.target.result;
                         imgLogo.onload = () => {
-                            const logoSize = 130;
-                            ctx.drawImage(imgLogo, 60, 210, logoSize, logoSize);
-                            procesarFinalizacion();
+                            ctx.drawImage(imgLogo, 60, 210, 130, 130);
+                            finalizar();
                         };
-                        imgLogo.onerror = () => procesarFinalizacion();
+                        imgLogo.onerror = finalizar;
                     };
                     reader.readAsDataURL(inputLogo.files[0]);
                 } else {
-                    procesarFinalizacion();
+                    finalizar();
                 }
             };
         });
@@ -449,113 +369,80 @@
         function wrapText(context, text, x, y, maxWidth, lineHeight) {
             const words = text.split(' ');
             let line = '';
-            let currentY = y;
-
             for(let n = 0; n < words.length; n++) {
                 let testLine = line + words[n] + ' ';
-                let metrics = context.measureText(testLine);
-                let testWidth = metrics.width;
-                if (testWidth > maxWidth && n > 0) {
-                    context.fillText(line, x, currentY);
+                if (context.measureText(testLine).width > maxWidth && n > 0) {
+                    context.fillText(line, x, y);
                     line = words[n] + ' ';
-                    currentY += lineHeight;
+                    y += lineHeight;
                 } else {
                     line = testLine;
                 }
             }
-            context.fillText(line, x, currentY);
+            context.fillText(line, x, y);
         }
 
-        function guardarYRenderizarAviso(dataUrl, descripcion) {
-            let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
-            
-            const nuevoAviso = {
-                id: Date.now(),
-                imagen: dataUrl,
-                texto: descripcion,
-                fecha: new Date().toLocaleString()
-            };
-
-            avisosGuardados.unshift(nuevoAviso);
-            localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
-
+        function guardarAvisoFijo(dataUrl, texto) {
+            let guardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
+            guardados.unshift({ id: Date.now(), imagen: dataUrl, texto: texto });
+            localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(guardados));
             document.getElementById('textoAviso').value = '';
             document.getElementById('logoAvisador').value = '';
-
-            alert("¡Aviso procesado, sellado con éxito y sumado a la vidriera!");
-            renderizarVidrieraCompleta();
+            renderizarVidriera();
         }
 
-        function renderizarVidrieraCompleta() {
+        function renderizarVidriera() {
             const grid = document.getElementById('estanteGrid');
             grid.innerHTML = ''; 
 
-            let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
+            let guardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
             
-            // 1. Mostrar avisos fijos sellados y guardados
-            avisosGuardados.forEach((aviso) => {
+            // 1. Mostrar avisos fijos creados
+            guardados.forEach((aviso) => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
+                    <div><span class="badge-aviso">⚡ AVISO FIJO GUARDADO</span></div>
+                    <div class="img-container"><img src="${aviso.imagen}" alt="Aviso"></div>
+                    <div style="font-size: 0.8rem; color: #fff; text-align: left; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">💬 ${aviso.texto}</div>
                     <div>
-                        <span class="badge-aviso">⚡ AVISO SELLADO FIJO</span>
-                    </div>
-                    <div class="img-container">
-                        <img src="${aviso.imagen}" alt="Aviso Sellado">
-                    </div>
-                    <div style="font-size: 0.8rem; color: #fff; text-align: left; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        💬 ${aviso.texto}
-                    </div>
-                    <div>
-                        <a href="${aviso.imagen}" download="aviso-sellado-ventaniya-${aviso.id}.png" class="btn">📥 Descargar Sellado</a>
-                        <button class="btn btn-borrar" onclick="borrarAvisoFijo(${aviso.id})">🗑️ Quitar de la Vidriera</button>
+                        <a href="${aviso.imagen}" download="aviso-${aviso.id}.png" class="btn">📥 Descargar Sellado</a>
+                        <button class="btn btn-borrar" onclick="borrarAviso(${aviso.id})">🗑️ Borrar de la Vidriera</button>
                     </div>
                 `;
                 grid.appendChild(card);
             });
 
-            // 2. Mostrar exactamente las estampas originales que estén en el repo (con su reloj en vivo)
-            if (listaImagenesRepo.length > 0) {
-                listaImagenesRepo.forEach((img, index) => {
-                    const cardId = `reloj-repo-${index}`;
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <div>
-                            <span class="badge-aviso" style="background: #0077ff;">🖼️ ESTAMPA ORIGINAL REPO</span>
+            // 2. Mostrar la estampa original del repositorio con su reloj en vivo
+            if (estampaRepo) {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div><span class="badge-aviso" style="background: #0077ff;">🖼️ ESTAMPA REPO</span></div>
+                    <div class="img-container">
+                        <img src="${estampaRepo.download_url}" alt="${estampaRepo.name}">
+                        <div class="live-casio-overlay">
+                            <div class="casio-time" id="reloj-repo-time">00:00:00.000</div>
+                            <div class="casio-date" id="reloj-repo-date">--/--/----</div>
                         </div>
-                        <div class="img-container">
-                            <img src="${img.download_url}" alt="${img.name}">
-                            <div class="live-casio-overlay">
-                                <div class="casio-time" id="${cardId}-time">00:00:00.000</div>
-                                <div class="casio-date" id="${cardId}-date">--/--/----</div>
-                            </div>
-                        </div>
-                        <div>
-                            <a href="${img.download_url}" download="${img.name}" class="btn" target="_blank">📥 Descargar Original</a>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                    iniciarRelojCasioEnVivo(cardId);
-                });
-            }
-
-            if (avisosGuardados.length === 0 && listaImagenesRepo.length === 0) {
-                grid.innerHTML = '<div class="card"><div class="error-msg">No hay estampillas ni avisos en la vidriera.</div></div>';
+                    </div>
+                    <div>
+                        <a href="${estampaRepo.download_url}" download="${estampaRepo.name}" class="btn" target="_blank">📥 Descargar Original</a>
+                    </div>
+                `;
+                grid.appendChild(card);
+                iniciarReloj('reloj-repo');
             }
         }
 
-        window.borrarAvisoFijo = function(id) {
-            if (confirm("¿Estás seguro de quitar este aviso de la vidriera?")) {
-                let avisosGuardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
-                avisosGuardados = avisosGuardados.filter(a => a.id !== id);
-                localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(avisosGuardados));
-                renderizarVidrieraCompleta();
-            }
+        window.borrarAviso = function(id) {
+            let guardados = JSON.parse(localStorage.getItem('ventaniya_avisos_fijos')) || [];
+            guardados = guardados.filter(a => a.id !== id);
+            localStorage.setItem('ventaniya_avisos_fijos', JSON.stringify(guardados));
+            renderizarVidriera();
         };
 
-        inicializarVidriera();
+        inicializar();
     </script>
-
 </body>
 </html>
